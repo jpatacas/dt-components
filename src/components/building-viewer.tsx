@@ -1,4 +1,4 @@
-import { FC } from "react";
+import { type FC } from "react";
 
 export const BuildingViewer: FC = () => {
     return <h1>Hello building viewer!</h1>
