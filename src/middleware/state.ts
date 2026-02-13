@@ -1,8 +1,7 @@
-//import User from database
+import { type User } from "firebase/auth";
 
 export interface State {
-    //user: User | null;
-    user: null;
+    user: User | null;
 }
 
 export const initialState: State = {

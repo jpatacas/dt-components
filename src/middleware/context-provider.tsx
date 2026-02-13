@@ -1,7 +1,7 @@
 import {
   createContext,
   type FC,
-  PropsWithChildren,
+  type PropsWithChildren,
   useContext,
   useReducer,
 } from "react";
