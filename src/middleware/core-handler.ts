@@ -4,7 +4,10 @@ import type { Action } from "./actions";
 export const executeCore = (action:Action) => {
     if (action.type === "LOGIN")
     {
-        userAuth.login(action);
-        //userAuth.login();
+        userAuth.login();
+    }
+        if (action.type === "LOGOUT")
+    {
+        userAuth.logout();
     }
 }

@@ -1,17 +1,13 @@
-import { type Action } from "../middleware/actions";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from "firebase/auth";
 
 export const userAuth = {
-  login: (action: Action) => {
-    if (action.payload) {
-      console.log(`User ${action.payload.displayName} logged`);
-    } else {
-      console.log("No user logged");
-    }
-
-    //authentication to db
-    //const auth = getAuth() etc
-    // ...
-    //sign in...
-
+  login: () => {
+    const auth = getAuth();
+    const provider = new GoogleAuthProvider();
+    signInWithPopup(auth, provider);
   },
+  logout: () => {
+    const auth = getAuth();
+    signOut(auth);
+  }
 };
