@@ -1,5 +1,6 @@
 import { type FC } from "react";
 import { useAppContext } from "../../middleware/context-provider";
+import { Button } from "@mui/material";
 
 export const LoginForm: FC = () => {
   const [state, dispatch] = useAppContext(); //state and dispatch - need both?
@@ -17,10 +18,10 @@ export const LoginForm: FC = () => {
       {state.user ? (
         <>
         <p>{state.user.displayName}</p>
-        <button onClick={onLogout}>Logout</button>
+        <Button onClick={onLogout}>Logout</Button>
         </>
       ) : (
-        <button onClick={onLogin}>Login</button>
+        <Button onClick={onLogin}>Login</Button>
       )}
     </h1>
   );
