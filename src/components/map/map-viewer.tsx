@@ -52,8 +52,10 @@ const onCreate = () => {
           <Button onClick={onToggleCreate}>cancel</Button>
         </div>
       )}
-      <Button onClick={onToggleCreate}>Create building</Button>
-      <Button onClick={onLogout}>Log out</Button>
+      <div className="gis-button-container">
+      <Button variant = "contained" onClick={onToggleCreate}>Create building</Button>
+      <Button variant = "contained" onClick={onLogout}>Log out</Button>
+      </div>
     </>
   );
 };

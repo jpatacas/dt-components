@@ -1,10 +1,14 @@
-import mapboxgl from "mapbox-gl";
+import * as MAPBOX from "mapbox-gl";
 import { MAPBOX_KEY } from "../../config";
-import type { GisParameters } from "../../types";
+import type { Building, GisParameters, LngLat } from "../../types";
+import type { User } from "firebase/auth";
 
 export class MapScene {
-  private map!: mapboxgl.Map;
+  private map!: MAPBOX.Map;
   private readonly style = "mapbox://styles/mapbox/light-v11";
+
+  private clickedCoordinates: LngLat = { lat: 0, lng: 0 };
+  private buildings: Building[] = [];
 
   constructor(container: HTMLDivElement) {
     const config = this.getConfig(container);
@@ -15,17 +19,17 @@ export class MapScene {
     if (this.map) {
       this.map.remove();
     }
+    this.buildings = [];
   }
 
-  // -------------------------
+  // ----------------------------------
   // Initialization
-  // -------------------------
+  // ----------------------------------
 
   private initializeMap(config: GisParameters) {
-    mapboxgl.accessToken = MAPBOX_KEY;
-
-    this.map = new mapboxgl.Map({
+    this.map = new MAPBOX.Map({
       container: config.container,
+      accessToken: MAPBOX_KEY,
       style: this.style,
       center: config.center,
       zoom: config.zoom,
@@ -35,17 +39,30 @@ export class MapScene {
     });
 
     this.map.on("load", () => {
-      this.setupBaseLayers();
-      //   this.setupInteractions();
+      this.setupBuildingSource();
+      this.setupInteractions();
     });
   }
 
-  // -------------------------
-  // Base Layers
-  // -------------------------
+  // ----------------------------------
+  // Building Source + Layer
+  // ----------------------------------
 
-  private setupBaseLayers() {
-    // 3d buildings layer
+  private setupBuildingSource() {
+    this.map.addSource("user-buildings", {
+      type: "geojson",
+      data: this.getBuildingGeoJSON(),
+    });
+
+    this.map.addLayer({
+      id: "user-buildings-layer",
+      type: "circle",
+      source: "user-buildings",
+      paint: {
+        "circle-radius": 6,
+        "circle-color": "#0077ff",
+      },
+    });
 
     this.map.addLayer({
       id: "add-3d-buildings",
@@ -83,11 +100,111 @@ export class MapScene {
     });
   }
 
-  // -------------------------
+  private updateBuildingSource() {
+    const source = this.map.getSource("user-buildings") as MAPBOX.GeoJSONSource;
+    if (source) {
+      source.setData(this.getBuildingGeoJSON());
+    }
+  }
+
+  // ----------------------------------
+  // Public API
+  // ----------------------------------
+
+  public addBuilding(user: User) {
+    const { lat, lng } = this.clickedCoordinates;
+    if (!lat || !lng) return;
+
+    const building: Building = {
+      uid: crypto.randomUUID(),
+      userID: user.uid,
+      lat,
+      lng,
+      energy: 0,
+      name: "",
+      models: [],
+      documents: [],
+    };
+
+    this.buildings.push(building);
+    this.updateBuildingSource();
+  }
+
+  public loadBuildings(buildings: Building[]) {
+    this.buildings = buildings;
+    this.updateBuildingSource();
+  }
+
+  // ----------------------------------
+  // Interactions
+  // ----------------------------------
+
+  private setupInteractions() {
+    // Right-click to store position
+    this.map.on("contextmenu", (event) => {
+      this.clickedCoordinates = {
+        lat: event.lngLat.lat,
+        lng: event.lngLat.lng,
+      };
+    });
+
+    // Click building icon
+    this.map.on("click", "user-buildings-layer", (e) => {
+      const feature = e.features?.[0];
+      if (!feature) return;
+
+      const buildingId = feature.properties?.uid;
+      if (buildingId) {
+        this.onBuildingSelected(buildingId);
+      }
+    });
+
+    this.map.on("mouseenter", "user-buildings-layer", () => {
+      this.map.getCanvas().style.cursor = "pointer";
+    });
+
+    this.map.on("mouseleave", "user-buildings-layer", () => {
+      this.map.getCanvas().style.cursor = "";
+    });
+  }
+
+  // ----------------------------------
+  // GeoJSON Builder
+  // ----------------------------------
+
+  private getBuildingGeoJSON(): GeoJSON.FeatureCollection {
+    return {
+      type: "FeatureCollection",
+      features: this.buildings.map((b) => ({
+        type: "Feature",
+        geometry: {
+          type: "Point",
+          coordinates: [b.lng, b.lat],
+        },
+        properties: {
+          uid: b.uid,
+          userID: b.userID,
+        },
+      })),
+    };
+  }
+
+  // ----------------------------------
+  // Event Hook
+  // ----------------------------------
+
+  private onBuildingSelected(buildingId: string) {
+    console.log("Building selected:", buildingId);
+    // Emit to router or global state
+  }
+
+  // ----------------------------------
   // Config
-  // -------------------------
+  // ----------------------------------
 
   private getConfig(container: HTMLDivElement): GisParameters {
+    const center: [number, number] = [-0.139203, 51.499702];
+
     return {
       container,
       accessToken: MAPBOX_KEY,
