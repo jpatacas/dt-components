@@ -1,16 +1,32 @@
-import { useEffect, useRef, type FC } from "react";
+import { useEffect, useRef, useState, type FC } from "react";
 import { useAppContext } from "../../middleware/context-provider";
 import { Navigate } from "react-router-dom";
 import { Button } from "@mui/material";
+import "./map-viewer.css";
 
 export const MapViewer: FC = () => {
+  const containerRef = useRef(null);
+  const [isCreating, setIsCreating] = useState(false); // determine if user is creating a building
+
   const [state, dispatch] = useAppContext();
-  const canvasRef = useRef(null);
+  const { user } = state;
+
+  const onToggleCreate = () => {
+    setIsCreating(!isCreating);
+  }
+
+const onCreate = () => {
+    if (isCreating)
+    {
+        dispatch({type: "ADD_BUILDING", payload: user});
+        setIsCreating(false);
+    }
+}
 
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (canvas && state.user) {
-      dispatch({ type: "START_MAP", payload: canvas });
+    const container = containerRef.current;
+    if (container && user) {
+      dispatch({ type: "START_MAP", payload: {container, user} }); //load buildings per user
     }
 
     return () => {
@@ -19,7 +35,7 @@ export const MapViewer: FC = () => {
     };
   }, []);
 
-  if (!state.user) {
+  if (!user) {
     return <Navigate to="/login" />;
   }
 
@@ -29,7 +45,14 @@ export const MapViewer: FC = () => {
 
   return (
     <>
-      <div className="full-screen" ref={canvasRef} />
+      <div onContextMenu={onCreate} className="full-screen" ref={containerRef} />
+      {isCreating && (
+        <div className="overlay">
+          <p>Right click to create a new Building or</p>
+          <Button onClick={onToggleCreate}>cancel</Button>
+        </div>
+      )}
+      <Button onClick={onToggleCreate}>Create building</Button>
       <Button onClick={onLogout}>Log out</Button>
     </>
   );
