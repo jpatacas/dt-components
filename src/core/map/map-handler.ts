@@ -1,13 +1,14 @@
 import type { User } from "firebase/auth";
 import { MapScene } from "./map-scene";
+import type { Events } from "../../middleware/event-handler";
 
 export const mapHandler = {
   viewer: null as MapScene | null,
 
-  async start(container: HTMLDivElement, user: User) {
+  async start(container: HTMLDivElement, user: User, events: Events) {
     if (!this.viewer) {
       console.log("map started");
-      this.viewer = new MapScene(container);
+      this.viewer = new MapScene(container, events);
       await this.viewer.loadBuildings(user)
     }
   },

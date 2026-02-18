@@ -3,6 +3,7 @@ import { MAPBOX_KEY } from "../../config";
 import type { Building, GisParameters, LngLat } from "../../types";
 import type { User } from "firebase/auth";
 import { MapDatabase } from "./map-database";
+import type { Events } from "../../middleware/event-handler";
 
 export class MapScene {
   private map!: MAPBOX.Map;
@@ -18,7 +19,10 @@ export class MapScene {
   private ready!: Promise<void>;
   private resolveReady!: () => void;
 
-  constructor(container: HTMLDivElement) {
+  private events: Events;
+
+  constructor(container: HTMLDivElement, events: Events) {
+    this.events = events;
     this.ready = new Promise((resolve) => {
       this.resolveReady = resolve;
     });
@@ -220,6 +224,10 @@ export class MapScene {
   private onBuildingSelected(buildingId: string) {
     console.log("Building selected:", buildingId);
     // Emit to router or global state
+    this.events.trigger({
+      type: "OPEN_BUILDING",
+      payload: buildingId,
+    });
   }
 
   // ----------------------------------

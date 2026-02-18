@@ -9,24 +9,23 @@ export const MapViewer: FC = () => {
   const [isCreating, setIsCreating] = useState(false); // determine if user is creating a building
 
   const [state, dispatch] = useAppContext();
-  const { user } = state;
+  const { user, building } = state;
 
   const onToggleCreate = () => {
     setIsCreating(!isCreating);
-  }
+  };
 
-const onCreate = () => {
-    if (isCreating)
-    {
-        dispatch({type: "ADD_BUILDING", payload: user});
-        setIsCreating(false);
+  const onCreate = () => {
+    if (isCreating) {
+      dispatch({ type: "ADD_BUILDING", payload: user });
+      setIsCreating(false);
     }
-}
+  };
 
   useEffect(() => {
     const container = containerRef.current;
     if (container && user) {
-      dispatch({ type: "START_MAP", payload: {container, user} }); //load buildings per user
+      dispatch({ type: "START_MAP", payload: { container, user } }); //load buildings per user
     }
 
     return () => {
@@ -39,13 +38,22 @@ const onCreate = () => {
     return <Navigate to="/login" />;
   }
 
+  if (building) {
+    const url = `/building?id=${building}`;
+    return <Navigate to={url} />;
+  }
+
   const onLogout = () => {
     dispatch({ type: "LOGOUT" });
   };
 
   return (
     <>
-      <div onContextMenu={onCreate} className="full-screen" ref={containerRef} />
+      <div
+        onContextMenu={onCreate}
+        className="full-screen"
+        ref={containerRef}
+      />
       {isCreating && (
         <div className="overlay">
           <p>Right click to create a new Building or</p>
@@ -53,8 +61,12 @@ const onCreate = () => {
         </div>
       )}
       <div className="gis-button-container">
-      <Button variant = "contained" onClick={onToggleCreate}>Create building</Button>
-      <Button variant = "contained" onClick={onLogout}>Log out</Button>
+        <Button variant="contained" onClick={onToggleCreate}>
+          Create building
+        </Button>
+        <Button variant="contained" onClick={onLogout}>
+          Log out
+        </Button>
       </div>
     </>
   );

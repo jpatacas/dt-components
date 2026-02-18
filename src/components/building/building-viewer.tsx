@@ -1,5 +1,25 @@
-import { type FC } from "react";
-
+import type { FC } from "react"; //to define a component
+import { Button } from "@mui/material";
+import { useAppContext } from "../../middleware/context-provider";
+import { Navigate } from "react-router-dom";
 export const BuildingViewer: FC = () => {
-    return <h1>Hello building viewer!</h1>
-}
+
+    const [state,dispatch] = useAppContext()
+    const {building} = state;
+
+    const onCloseBuilding = () => {
+        dispatch({ type: "CLOSE_BUILDING" });
+
+    }
+
+    if (!building) {
+        return <Navigate to={"/map"} />
+    }
+
+  return (
+    <>
+      <h1>hello building viewer!</h1>
+      <Button onClick= {onCloseBuilding}>Close building</Button>
+    </>
+  );
+};
