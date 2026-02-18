@@ -4,10 +4,11 @@ import { MapScene } from "./map-scene";
 export const mapHandler = {
   viewer: null as MapScene | null,
 
-  start(container: HTMLDivElement) {
+  async start(container: HTMLDivElement, user: User) {
     if (!this.viewer) {
       console.log("map started");
       this.viewer = new MapScene(container);
+      await this.viewer.loadBuildings(user)
     }
   },
   remove() {
@@ -17,9 +18,9 @@ export const mapHandler = {
       this.viewer = null;
     }
   },
-  addBuilding(user: User) {
+    async addBuilding(user: User) {
     if (this.viewer) {
-      this.viewer.addBuilding(user);
+      await this.viewer.addBuilding(user);
     }
   },
 };

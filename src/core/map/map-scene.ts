@@ -2,6 +2,7 @@ import * as MAPBOX from "mapbox-gl";
 import { MAPBOX_KEY } from "../../config";
 import type { Building, GisParameters, LngLat } from "../../types";
 import type { User } from "firebase/auth";
+import { MapDatabase } from "./map-database";
 
 export class MapScene {
   private map!: MAPBOX.Map;
@@ -10,7 +11,18 @@ export class MapScene {
   private clickedCoordinates: LngLat = { lat: 0, lng: 0 };
   private buildings: Building[] = [];
 
+  private database = new MapDatabase();
+  //private unsubscribe?: () => void;
+  private mapLoaded = false;
+
+  private ready!: Promise<void>;
+  private resolveReady!: () => void;
+
   constructor(container: HTMLDivElement) {
+    this.ready = new Promise((resolve) => {
+      this.resolveReady = resolve;
+    });
+
     const config = this.getConfig(container);
     this.initializeMap(config);
   }
@@ -39,9 +51,47 @@ export class MapScene {
     });
 
     this.map.on("load", () => {
+      this.mapLoaded = true;
       this.setupBuildingSource();
       this.setupInteractions();
+      this.resolveReady();
     });
+  }
+
+  // ----------------------------------
+  // Firebase Sync
+  // ----------------------------------
+
+  public async loadBuildings(user: User) {
+    await this.ready;
+
+    const buildings = await this.database.getBuildings(user);
+    this.buildings = buildings;
+    this.updateBuildingSource();
+  }
+
+  public async addBuilding(user: User) {
+    const { lat, lng } = this.clickedCoordinates;
+    if (!lat || !lng) return;
+
+    const building: Building = {
+      uid: "",
+      userID: user.uid,
+      lat,
+      lng,
+      energy: 0,
+      name: "",
+      models: [],
+      documents: [],
+    };
+
+    // Save to Firebase
+    const uid = await this.database.add(building);
+    building.uid = uid;
+
+    // Optimistic local update (optional if using subscribe)
+    this.buildings.push(building);
+    this.updateBuildingSource();
   }
 
   // ----------------------------------
@@ -101,38 +151,12 @@ export class MapScene {
   }
 
   private updateBuildingSource() {
+    if (!this.mapLoaded) return;
+
     const source = this.map.getSource("user-buildings") as MAPBOX.GeoJSONSource;
     if (source) {
       source.setData(this.getBuildingGeoJSON());
     }
-  }
-
-  // ----------------------------------
-  // Public API
-  // ----------------------------------
-
-  public addBuilding(user: User) {
-    const { lat, lng } = this.clickedCoordinates;
-    if (!lat || !lng) return;
-
-    const building: Building = {
-      uid: crypto.randomUUID(),
-      userID: user.uid,
-      lat,
-      lng,
-      energy: 0,
-      name: "",
-      models: [],
-      documents: [],
-    };
-
-    this.buildings.push(building);
-    this.updateBuildingSource();
-  }
-
-  public loadBuildings(buildings: Building[]) {
-    this.buildings = buildings;
-    this.updateBuildingSource();
   }
 
   // ----------------------------------
