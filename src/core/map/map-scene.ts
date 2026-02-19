@@ -221,12 +221,12 @@ export class MapScene {
   // Event Hook
   // ----------------------------------
 
-  private onBuildingSelected(buildingId: string) {
-    console.log("Building selected:", buildingId);
+  private onBuildingSelected(building: Building) {
+    console.log("Building selected:", building);
     // Emit to router or global state
     this.events.trigger({
       type: "OPEN_BUILDING",
-      payload: buildingId,
+      payload: building,
     });
   }
 
