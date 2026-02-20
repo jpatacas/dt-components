@@ -15,13 +15,15 @@ export interface Building {
   lng: number;
   // energy: number;
   name: string;
-  // models: Model[];
+  models: Model[];
   // documents: Document[];
 }
 
 export interface Model {
   name: string;
   id: string;
+  localKey?: string; // reference to IndexedDB key
+  size?: number;
 }
 
 export interface Document {
