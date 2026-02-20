@@ -83,10 +83,7 @@ export class MapScene {
       userID: user.uid,
       lat,
       lng,
-      energy: 0,
       name: "",
-      models: [],
-      documents: [],
     };
 
     // Save to Firebase
@@ -182,9 +179,12 @@ export class MapScene {
       if (!feature) return;
 
       const buildingId = feature.properties?.uid;
-      if (buildingId) {
-        this.onBuildingSelected(buildingId);
-      }
+      if (!buildingId) return;
+
+      const building = this.buildings.find((b) => b.uid === buildingId);
+      if (!building) return;
+
+      this.onBuildingSelected(building);
     });
 
     this.map.on("mouseenter", "user-buildings-layer", () => {

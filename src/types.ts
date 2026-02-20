@@ -13,10 +13,10 @@ export interface Building {
   userID: string;
   lat: number;
   lng: number;
-  energy: number;
+  // energy: number;
   name: string;
-  models: Model[];
-  documents: Document[];
+  // models: Model[];
+  // documents: Document[];
 }
 
 export interface Model {
