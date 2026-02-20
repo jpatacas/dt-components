@@ -16,12 +16,13 @@ export class MapDatabase {
   //update this according to what is needed for the building (defined in types.ts)
   async add(building: Building) {
     const dbInstance = getFirestore(getApp());
-    const { lat, lng, userID, name } = building;
+    const { lat, lng, userID, name , models} = building;
     const result = await addDoc(collection(dbInstance, this.buildings), {
       lat,
       lng,
       userID,
       name,
+      models
     });
     return result.id;
   }

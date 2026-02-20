@@ -84,6 +84,7 @@ export class MapScene {
       lat,
       lng,
       name: "",
+      models: []
     };
 
     // Save to Firebase
