@@ -2,9 +2,9 @@ import { type FC, useState } from "react"; //to define a component
 import { Box , CssBaseline} from "@mui/material";
 import { useAppContext } from "../../middleware/context-provider";
 import { Navigate } from "react-router-dom";
-import { BuildingTopBar } from "./building-topbar";
-import { BuildingDrawer } from "./building-drawer";
-import { getDrawerHeader } from "./mui-utils";
+import { BuildingTopBar } from "./side-menu/building-topbar";
+import { BuildingDrawer } from "./side-menu/building-drawer";
+import { getDrawerHeader } from "./side-menu/mui-utils";
 import { BuildingFrontMenu } from "./front-menu/building-front-menu";
 import { type FrontMenuMode } from "./types";
 import { BuildingViewport } from "./viewport/building-viewport";
