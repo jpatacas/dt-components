@@ -7,6 +7,8 @@ import { BuildingDrawer } from "./building-drawer";
 import { getDrawerHeader } from "./mui-utils";
 import { BuildingFrontMenu } from "./front-menu/building-front-menu";
 import { type FrontMenuMode } from "./types";
+import { BuildingViewport } from "./viewport/building-viewport";
+
 
 export const BuildingViewer: FC = () => {
   //menus visibility
@@ -68,7 +70,7 @@ export const BuildingViewer: FC = () => {
           mode={frontMenu}
         />
 
-        <h1>Hello building viewer!</h1>
+        <BuildingViewport /> 
       </Box>
     </Box>
   );

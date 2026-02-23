@@ -87,7 +87,7 @@ uploadModel: async (
 deleteModel: async (model: Model, building: Building, events: Events) => {
 
   // Delete locally
-  await localModelStore.delete(model.localKey);
+  await localModelStore.delete(model.localKey!);
 
   // Remove from metadata
   building.models = building.models.filter(m => m.id !== model.id);
