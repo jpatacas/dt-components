@@ -236,12 +236,12 @@ export class MapScene {
   // ----------------------------------
 
   private getConfig(container: HTMLDivElement): GisParameters {
-    const center: [number, number] = [-0.139203, 51.499702];
+    const center: [number, number] = [-1.6246925540216892, 54.972387334931994];
 
     return {
       container,
       accessToken: MAPBOX_KEY,
-      center: [-0.139203, 51.499702],
+      center: center,
       zoom: 15,
       pitch: 60,
       bearing: -40,
@@ -249,3 +249,5 @@ export class MapScene {
     };
   }
 }
+
+// 54.972387334931994, -1.6246925540216892 Newcastle Helix
