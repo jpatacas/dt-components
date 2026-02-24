@@ -1,45 +1,131 @@
 import * as OBC from "@thatopen/components";
+import { type Building } from "../../types";
+import { BuildingDatabase } from "./building-database";
+import workerUrl from "@thatopen/fragments/dist/Worker/worker.mjs?worker&url"
 
 export class BuildingScene {
-  components: OBC.Components;
-  world!: OBC.World;
+  private components: OBC.Components;
+  private world!: OBC.World;
+  private ifcLoader!: OBC.IfcLoader;
+  private fragments!: OBC.FragmentsManager;
 
-  constructor(container: HTMLDivElement) {
-    // Core engine
+  private database = new BuildingDatabase();
+
+  constructor(
+    private container: HTMLDivElement,
+    private building: Building,
+  ) {
     this.components = new OBC.Components();
+    this.init();
+  }
 
-    // Worlds manager (new architecture)
+  // --------------------------------------------------
+  // INITIALIZATION
+  // --------------------------------------------------
+
+  private async init() {
     const worlds = this.components.get(OBC.Worlds);
 
-    // Create world
     this.world = worlds.create<
       OBC.SimpleScene,
-      OBC.SimpleCamera,
+      OBC.OrthoPerspectiveCamera,
       OBC.SimpleRenderer
     >();
 
-    // Scene
     this.world.scene = new OBC.SimpleScene(this.components);
     this.world.scene.setup();
     this.world.scene.three.background = null;
 
-    // Renderer
     this.world.renderer = new OBC.SimpleRenderer(
       this.components,
-      container
+      this.container,
     );
 
-    // Camera
-    this.world.camera = new OBC.SimpleCamera(this.components);
-    this.world.camera.controls.setLookAt(12, 8, 6, 0, 0, 0);
+    this.world.camera = new OBC.OrthoPerspectiveCamera(this.components);
 
-    // Init components
+    await this?.world?.camera?.controls?.setLookAt(15, 10, 15, 0, 0, 0);
+
     this.components.init();
 
-    // Grid (new system)
-    const grids = this.components.get(OBC.Grids);
-    grids.create(this.world);
+    this.components.get(OBC.Grids).create(this.world);
+
+    // -----------------------------------------
+    // IFC Loader
+    // -----------------------------------------
+
+    this.ifcLoader = this.components.get(OBC.IfcLoader);
+
+    await this.ifcLoader.setup({
+      autoSetWasm: false,
+      wasm: {
+        path: "/wasm/",
+        absolute: false,
+      },
+    });
+
+    // -----------------------------------------
+    // Fragments Manager
+    // -----------------------------------------
+
+    this.fragments = this.components.get(OBC.FragmentsManager);
+    this.fragments.init(workerUrl);
+
+    // Update fragments when camera moves
+    this?.world?.camera?.controls?.addEventListener("update", () => {
+      this.fragments.core.update();
+    });
+
+    // When a model is loaded → attach to scene
+    this.fragments.list.onItemSet.add(({ value: model }) => {
+      model.useCamera(this.world.camera.three);
+      this.world.scene.three.add(model.object);
+      this.fragments.core.update(true);
+    });
+
+    // Prevent z-fighting
+    this.fragments.core.models.materials.list.onItemSet.add(
+      ({ value: material }) => {
+        if (!("isLodMaterial" in material && material.isLodMaterial)) {
+          material.polygonOffset = true;
+          material.polygonOffsetUnits = 1;
+          material.polygonOffsetFactor = Math.random();
+        }
+      },
+    );
+
+    // Load stored models
+    await this.loadAllModels();
   }
+
+  // --------------------------------------------------
+  // LOAD IFC
+  // --------------------------------------------------
+
+  async loadIfc(file: File) {
+    const buffer = new Uint8Array(await file.arrayBuffer());
+
+    await this.ifcLoader.load(buffer, false, file.name, {
+      processData: {
+        progressCallback: (progress) => console.log("Loading:", progress),
+      },
+    });
+  }
+
+  // --------------------------------------------------
+  // LOAD STORED MODELS (IndexedDB)
+  // --------------------------------------------------
+
+  private async loadAllModels() {
+    const files = await this.database.getModels(this.building);
+
+    for (const file of files) {
+      await this.loadIfc(file);
+    }
+  }
+
+  // --------------------------------------------------
+  // CLEANUP
+  // --------------------------------------------------
 
   dispose() {
     this.components.dispose();

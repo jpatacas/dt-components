@@ -4,7 +4,7 @@ import type { Action } from "./actions";
 import { Events } from "./event-handler";
 import { buildingHandler } from "../core/building/building-handler";
 
-export const executeCore = (action: Action, events: Events) => {
+export const executeCore = async (action: Action, events: Events) => {
   if (action.type === "LOGIN") {
     return databaseHandler.login();
   }
@@ -39,7 +39,8 @@ export const executeCore = (action: Action, events: Events) => {
   }
 
   if (action.type === "START_BUILDING") {
-    return buildingHandler.start(action.payload);
+    const { container, building } = action.payload;
+    return buildingHandler.start(container, building);
   }
   if (action.type === "CLOSE_BUILDING") {
     return buildingHandler.remove();
