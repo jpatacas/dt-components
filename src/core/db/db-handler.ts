@@ -21,17 +21,20 @@ export const databaseHandler = {
     signOut(auth);
   },
   deleteBuilding: async (building: Building, events: Events) => {
-    const dbInstance = getFirestore(getApp());
-    await deleteDoc(doc(dbInstance, "buildings", building.uid)); //building or building.uid?
+
+    // Delete all local models in parallel
+    await Promise.all(
+      building.models
+        .filter((m) => m.localKey)
+        .map((m) => localModelStore.delete(m.localKey!)),
+    );
+
+    // Delete Firestore metadata
+    const dbInstance = getFirestore();
+    await deleteDoc(doc(dbInstance, "buildings", building.uid));
+
     events.trigger({ type: "CLOSE_BUILDING" });
   },
-
-  // updateBuilding: async (building: Building) => {
-  //   const dbInstance = getFirestore(getApp());
-  //   await updateDoc(doc(dbInstance, "buildings", building), { //building or building.uid?
-  //     ...building,
-  //   });
-  // },
 
   updateBuilding: async (building: Building) => {
     if (!building?.uid) {
@@ -45,62 +48,54 @@ export const databaseHandler = {
     await updateDoc(doc(dbInstance, "buildings", uid), data);
   },
 
-uploadModel: async (
-  model: Model,
-  file: File,
-  building: Building,
-  events: Events
-) => {
+  uploadModel: async (
+    model: Model,
+    file: File,
+    building: Building,
+    events: Events,
+  ) => {
+    const localKey = `model_${crypto.randomUUID()}`;
 
-  const localKey = `model_${crypto.randomUUID()}`;
+    // Save file locally
+    await localModelStore.save(localKey, file);
 
-  // Save file locally
-  await localModelStore.save(localKey, file);
+    // Create full model metadata
+    const storedModel: Model = {
+      ...model,
+      localKey,
+      size: file.size,
+    };
 
-  // Create full model metadata
-  const storedModel: Model = {
-    ...model,
-    localKey,
-    size: file.size,
-  };
+    const updatedBuilding: Building = {
+      ...building,
+      models: [...building.models, storedModel],
+    };
 
-  const updatedBuilding: Building = {
-    ...building,
-    models: [...building.models, storedModel],
-  };
+    const dbInstance = getFirestore(getApp());
 
-  const dbInstance = getFirestore(getApp());
-
-  await updateDoc(
-    doc(dbInstance, "buildings", building.uid),
-    {
+    await updateDoc(doc(dbInstance, "buildings", building.uid), {
       models: updatedBuilding.models,
-    }
-  );
+    });
 
-  events.trigger({
-    type: "UPDATE_BUILDING",
-    payload: updatedBuilding,
-  });
-},
+    events.trigger({
+      type: "UPDATE_BUILDING",
+      payload: updatedBuilding,
+    });
+  },
 
-deleteModel: async (model: Model, building: Building, events: Events) => {
+  deleteModel: async (model: Model, building: Building, events: Events) => {
+    // Delete locally
+    await localModelStore.delete(model.localKey!);
 
-  // Delete locally
-  await localModelStore.delete(model.localKey!);
+    // Remove from metadata
+    building.models = building.models.filter((m) => m.id !== model.id);
 
-  // Remove from metadata
-  building.models = building.models.filter(m => m.id !== model.id);
+    const dbInstance = getFirestore(getApp());
 
-  const dbInstance = getFirestore(getApp());
-
-  await updateDoc(
-    doc(dbInstance, "buildings", building.uid),
-    {
+    await updateDoc(doc(dbInstance, "buildings", building.uid), {
       models: building.models,
-    }
-  );
+    });
 
-  events.trigger({ type: "UPDATE_BUILDING", payload: building });
-},
+    events.trigger({ type: "UPDATE_BUILDING", payload: building });
+  },
 };
