@@ -1,7 +1,8 @@
 import * as OBC from "@thatopen/components";
 import { type Building } from "../../types";
 import { BuildingDatabase } from "./building-database";
-import workerUrl from "@thatopen/fragments/dist/Worker/worker.mjs?worker&url"
+import workerUrl from "@thatopen/fragments/dist/Worker/worker.mjs?worker&url";
+import { modelCache } from "./model-cache";
 
 export class BuildingScene {
   private components: OBC.Components;
@@ -11,19 +12,34 @@ export class BuildingScene {
 
   private database = new BuildingDatabase();
 
+  private disposed = false;
+
   constructor(
     private container: HTMLDivElement,
     private building: Building,
   ) {
     this.components = new OBC.Components();
-    this.init();
+    //this.init();
+  }
+
+  hide() {
+    this.container.style.display = "none";
+  }
+
+  show() {
+    this.container.style.display = "block";
   }
 
   // --------------------------------------------------
   // INITIALIZATION
   // --------------------------------------------------
 
+  async initialize() {
+    await this.init();
+  }
+
   private async init() {
+    if (this.disposed) return;
     const worlds = this.components.get(OBC.Worlds);
 
     this.world = worlds.create<
@@ -46,6 +62,8 @@ export class BuildingScene {
     await this?.world?.camera?.controls?.setLookAt(15, 10, 15, 0, 0, 0);
 
     this.components.init();
+
+    if (this.disposed) return;
 
     this.components.get(OBC.Grids).create(this.world);
 
@@ -97,30 +115,45 @@ export class BuildingScene {
     await this.loadAllModels();
   }
 
-  // --------------------------------------------------
-  // LOAD IFC
-  // --------------------------------------------------
-
   async loadIfc(file: File) {
+    console.time("IFC conversion");
+
     const buffer = new Uint8Array(await file.arrayBuffer());
 
-    await this.ifcLoader.load(buffer, false, file.name, {
-      processData: {
-        progressCallback: (progress) => console.log("Loading:", progress),
-      },
-    });
+    const model = await this.ifcLoader.load(buffer, false, file.name);
+
+    console.timeEnd("IFC conversion");
+
+    return model;
   }
 
-  // --------------------------------------------------
-  // LOAD STORED MODELS (IndexedDB)
-  // --------------------------------------------------
-
   private async loadAllModels() {
+    console.time("loadAllModels");
+
+    if (modelCache.has(this.building.uid)) {
+      console.log(" LOADING FROM MEMORY CACHE");
+
+      const cachedFiles = modelCache.get(this.building.uid);
+
+      for (const file of cachedFiles) {
+        await this.loadIfc(file);
+      }
+
+      console.timeEnd("loadAllModels");
+      return;
+    }
+
+    console.log(" LOADING FROM INDEXEDDB");
+
     const files = await this.database.getModels(this.building);
+
+    modelCache.set(this.building.uid, files);
 
     for (const file of files) {
       await this.loadIfc(file);
     }
+
+    console.timeEnd("loadAllModels");
   }
 
   // --------------------------------------------------
@@ -128,6 +161,7 @@ export class BuildingScene {
   // --------------------------------------------------
 
   dispose() {
+    this.disposed = true;
     this.components.dispose();
   }
 }
