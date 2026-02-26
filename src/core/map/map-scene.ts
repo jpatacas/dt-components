@@ -84,7 +84,7 @@ export class MapScene {
       lat,
       lng,
       name: "",
-      models: []
+      models: [],
     };
 
     // Save to Firebase
@@ -104,6 +104,65 @@ export class MapScene {
     this.map.addSource("user-buildings", {
       type: "geojson",
       data: this.getBuildingGeoJSON(),
+    });
+
+    this.map.addSource("eraser", {
+      type: "geojson",
+      data: {
+        type: "FeatureCollection",
+        features: [
+          {
+            type: "Feature",
+            properties: {},
+            geometry: {
+              coordinates: [
+                [
+                  [-1.6257573096295346, 54.97388205609113],
+                  [-1.6258416006236587, 54.97322952640323],
+                  [-1.6245587315695218, 54.97372629953753],
+                  [-1.6247190902005002, 54.97384075708487],
+                  [-1.6257573096295346, 54.97388205609113],
+                ],
+              ],
+              type: "Polygon",
+            },
+            id: 0,
+          },
+          {
+            type: "Feature",
+            properties: {},
+            geometry: {
+              coordinates: [
+                [
+                  [-1.625154043934117, 54.97235524220949],
+                  [-1.6253046305668875, 54.97206233116623],
+                  [-1.62425052413073, 54.97191347391583],
+                  [-1.6241292182326106, 54.97221358877525],
+                  [-1.625154043934117, 54.97235524220949],
+                ],
+              ],
+              type: "Polygon",
+            },
+          },
+          {
+            type: "Feature",
+            properties: {},
+            geometry: {
+              coordinates: [
+                [
+                  [-1.6231887225457058, 54.972619490508976],
+                  [-1.6239268993347764, 54.97229739855709],
+                  [-1.623802614466996, 54.972226062406094],
+                  [-1.623576641980378, 54.97219147513576],
+                  [-1.6229815810997934, 54.97246384908286],
+                  [-1.6231887225457058, 54.972619490508976],
+                ],
+              ],
+              type: "Polygon",
+            },
+          },
+        ],
+      },
     });
 
     this.map.addLayer({
@@ -149,6 +208,15 @@ export class MapScene {
         ],
         "fill-extrusion-opacity": 0.6,
       },
+    });
+    this.map.addLayer({
+      id: "eraser",
+      type: "clip",
+      source: "eraser",
+      layout: {
+        "clip-layer-types": ["symbol", "model"],
+      },
+      minzoom: 1,
     });
   }
 
@@ -242,9 +310,9 @@ export class MapScene {
       container,
       accessToken: MAPBOX_KEY,
       center: center,
-      zoom: 15,
-      pitch: 60,
-      bearing: -40,
+      zoom: 16.5,
+      pitch: 45,
+      bearing: 11,
       buildings: [],
     };
   }
