@@ -6,7 +6,7 @@ import { BuildingInfoMenu } from "./front-menu-content/building-info-menu";
 import type { FrontMenuMode } from "../types";
 import { ModelListMenu } from "./front-menu-content/model-list-menu";
 
-export type FrontMenuMode = "BuildingInfo"; // if mode == properties, display properties etc...
+//export type FrontMenuMode = "BuildingInfo"; // if mode == properties, display properties etc...
 
 export const BuildingFrontMenu: FC<{
   mode: FrontMenuMode;

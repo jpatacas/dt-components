@@ -304,7 +304,7 @@ export class MapScene {
   // ----------------------------------
 
   private getConfig(container: HTMLDivElement): GisParameters {
-    const center: [number, number] = [-1.6246925540216892, 54.972387334931994];
+    const center: [number, number] = [-1.6246925540216892, 54.972387334931994]; //coordinates for Newcastle Helix district
 
     return {
       container,
@@ -318,4 +318,3 @@ export class MapScene {
   }
 }
 
-// 54.972387334931994, -1.6246925540216892 Newcastle Helix

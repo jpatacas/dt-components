@@ -20,21 +20,23 @@ export const databaseHandler = {
     const auth = getAuth();
     signOut(auth);
   },
-  deleteBuilding: async (building: Building, events: Events) => {
+deleteBuilding: async (building: Building, events: Events) => {
 
-    // Delete all local models in parallel
-    await Promise.all(
-      building.models
-        .filter((m) => m.localKey)
-        .map((m) => localModelStore.delete(m.localKey!)),
-    );
+  // Delete all IFC files
+  await Promise.all(
+    building.models
+      .filter((m) => m.localKey)
+      .map((m) => localModelStore.deleteIFC(m.localKey!)),
+  );
 
-    // Delete Firestore metadata
-    const dbInstance = getFirestore();
-    await deleteDoc(doc(dbInstance, "buildings", building.uid));
+  // Delete fragment cache
+  await localModelStore.deleteFragments(building.uid);
 
-    events.trigger({ type: "CLOSE_BUILDING" });
-  },
+  const dbInstance = getFirestore();
+  await deleteDoc(doc(dbInstance, "buildings", building.uid));
+
+  events.trigger({ type: "CLOSE_BUILDING" });
+},
 
   updateBuilding: async (building: Building) => {
     if (!building?.uid) {
@@ -48,54 +50,56 @@ export const databaseHandler = {
     await updateDoc(doc(dbInstance, "buildings", uid), data);
   },
 
-  uploadModel: async (
-    model: Model,
-    file: File,
-    building: Building,
-    events: Events,
-  ) => {
-    const localKey = `model_${crypto.randomUUID()}`;
+uploadModel: async (
+  model: Model,
+  file: File,
+  building: Building,
+  events: Events,
+) => {
+  const localKey = `model_${crypto.randomUUID()}`;
 
-    // Save file locally
-    await localModelStore.save(localKey, file);
+  // Save IFC file only
+  await localModelStore.saveIFC(localKey, file);
 
-    // Create full model metadata
-    const storedModel: Model = {
-      ...model,
-      localKey,
-      size: file.size,
-    };
+  const storedModel: Model = {
+    ...model,
+    localKey,
+    size: file.size,
+  };
 
-    const updatedBuilding: Building = {
-      ...building,
-      models: [...building.models, storedModel],
-    };
+  const updatedBuilding: Building = {
+    ...building,
+    models: [...building.models, storedModel],
+  };
 
-    const dbInstance = getFirestore(getApp());
+  const dbInstance = getFirestore(getApp());
 
-    await updateDoc(doc(dbInstance, "buildings", building.uid), {
-      models: updatedBuilding.models,
-    });
+  await updateDoc(doc(dbInstance, "buildings", building.uid), {
+    models: updatedBuilding.models,
+  });
 
-    events.trigger({
-      type: "UPDATE_BUILDING",
-      payload: updatedBuilding,
-    });
-  },
+  events.trigger({
+    type: "UPDATE_BUILDING",
+    payload: updatedBuilding,
+  });
+},
 
-  deleteModel: async (model: Model, building: Building, events: Events) => {
-    // Delete locally
-    await localModelStore.delete(model.localKey!);
+deleteModel: async (model: Model, building: Building, events: Events) => {
 
-    // Remove from metadata
-    building.models = building.models.filter((m) => m.id !== model.id);
+  // Delete IFC file
+  await localModelStore.deleteIFC(model.localKey!);
 
-    const dbInstance = getFirestore(getApp());
+  // Also delete fragment cache (force reconversion next open)
+  await localModelStore.deleteFragments(building.uid);
 
-    await updateDoc(doc(dbInstance, "buildings", building.uid), {
-      models: building.models,
-    });
+  building.models = building.models.filter((m) => m.id !== model.id);
 
-    events.trigger({ type: "UPDATE_BUILDING", payload: building });
-  },
+  const dbInstance = getFirestore(getApp());
+
+  await updateDoc(doc(dbInstance, "buildings", building.uid), {
+    models: building.models,
+  });
+
+  events.trigger({ type: "UPDATE_BUILDING", payload: building });
+},
 };
