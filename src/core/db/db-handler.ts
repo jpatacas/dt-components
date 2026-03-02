@@ -9,6 +9,7 @@ import type { Events } from "../../middleware/event-handler";
 import { deleteDoc, getFirestore, doc, updateDoc } from "firebase/firestore";
 import { getApp } from "firebase/app";
 import { localModelStore } from "./local-model-store";
+import { buildingHandler } from "../building/building-handler";
 
 export const databaseHandler = {
   login: () => {
@@ -56,7 +57,8 @@ uploadModel: async (
   building: Building,
   events: Events,
 ) => {
-  const localKey = `model_${crypto.randomUUID()}`;
+  //const localKey = `model_${crypto.randomUUID()}`;
+  const localKey = building.uid;
 
   // Save IFC file only
   await localModelStore.saveIFC(localKey, file);
@@ -82,10 +84,11 @@ uploadModel: async (
     type: "UPDATE_BUILDING",
     payload: updatedBuilding,
   });
+  await buildingHandler.refreshModels(updatedBuilding);
 },
 
 deleteModel: async (model: Model, building: Building, events: Events) => {
-
+console.log("DELETE_MODEL payload:", model, building);
   // Delete IFC file
   await localModelStore.deleteIFC(model.localKey!);
 
@@ -101,5 +104,6 @@ deleteModel: async (model: Model, building: Building, events: Events) => {
   });
 
   events.trigger({ type: "UPDATE_BUILDING", payload: building });
+  await buildingHandler.refreshModels(building);
 },
 };

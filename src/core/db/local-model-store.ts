@@ -33,6 +33,7 @@ export const localModelStore = {
     await db.delete("models", key);
   },
   async saveFragments(key: string, buffers: ArrayBuffer[]) {
+    console.log("Saving fragments for:", key);
     const db = await getDB();
     await db.put("fragments", buffers, key);
   },
@@ -42,6 +43,7 @@ export const localModelStore = {
     return db.get("fragments", key);
   },
   async deleteFragments(key: string) {
+    console.log("Deleting fragments for:", key);
   const db = await getDB();
   await db.delete("fragments", key);
 }

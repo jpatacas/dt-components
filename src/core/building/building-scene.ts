@@ -219,4 +219,20 @@ export class BuildingScene {
 
   console.timeEnd("fragments.core.load()");
 }
+
+public async refreshModels(building: Building) {
+  this.building = building;
+
+  // Dispose existing fragment models
+  for (const [modelId] of this.fragments.list) {
+    this.fragments.core.disposeModel(modelId);
+  }
+
+  // Invalidate fragment cache
+  await localModelStore.deleteFragments(this.building.uid);
+
+  // Reload models
+  await this.loadAllModels();
+}
+
 }
