@@ -9,7 +9,7 @@ import type { Events } from "../../middleware/event-handler";
 import { deleteDoc, getFirestore, doc, updateDoc } from "firebase/firestore";
 import { getApp } from "firebase/app";
 import { localModelStore } from "./local-model-store";
-import { buildingHandler } from "../building/building-handler";
+import { buildingHandler } from "../building/building-handler"; //avoid this in future update
 
 export const databaseHandler = {
   login: () => {
@@ -21,23 +21,22 @@ export const databaseHandler = {
     const auth = getAuth();
     signOut(auth);
   },
-deleteBuilding: async (building: Building, events: Events) => {
+  deleteBuilding: async (building: Building, events: Events) => {
+    // Delete all IFC files anf fragment cache
+    await Promise.all(
+      building.models
+        .filter((m) => m.localKey)
+        .map((m) => {
+          localModelStore.deleteIFC(m.localKey!);
+          localModelStore.deleteFragments(m.localKey!);
+        }),
+    );
 
-  // Delete all IFC files
-  await Promise.all(
-    building.models
-      .filter((m) => m.localKey)
-      .map((m) => localModelStore.deleteIFC(m.localKey!)),
-  );
+    const dbInstance = getFirestore();
+    await deleteDoc(doc(dbInstance, "buildings", building.uid));
 
-  // Delete fragment cache
-  await localModelStore.deleteFragments(building.uid);
-
-  const dbInstance = getFirestore();
-  await deleteDoc(doc(dbInstance, "buildings", building.uid));
-
-  events.trigger({ type: "CLOSE_BUILDING" });
-},
+    events.trigger({ type: "CLOSE_BUILDING" });
+  },
 
   updateBuilding: async (building: Building) => {
     if (!building?.uid) {
@@ -51,59 +50,61 @@ deleteBuilding: async (building: Building, events: Events) => {
     await updateDoc(doc(dbInstance, "buildings", uid), data);
   },
 
-uploadModel: async (
-  model: Model,
-  file: File,
-  building: Building,
-  events: Events,
-) => {
-  //const localKey = `model_${crypto.randomUUID()}`;
-  const localKey = building.uid;
+  uploadModel: async (
+    model: Model,
+    file: File,
+    building: Building,
+    events: Events,
+  ) => {
+    const localKey = `model_${crypto.randomUUID()}`;
+    //const localKey = building.uid;
 
-  // Save IFC file only
-  await localModelStore.saveIFC(localKey, file);
+    // Save IFC file only
+    await localModelStore.saveIFC(localKey, file);
 
-  const storedModel: Model = {
-    ...model,
-    localKey,
-    size: file.size,
-  };
+    const storedModel: Model = {
+      ...model,
+      localKey,
+      size: file.size,
+    };
 
-  const updatedBuilding: Building = {
-    ...building,
-    models: [...building.models, storedModel],
-  };
+    const updatedBuilding: Building = {
+      ...building,
+      models: [...building.models, storedModel],
+    };
 
-  const dbInstance = getFirestore(getApp());
+    const dbInstance = getFirestore(getApp());
 
-  await updateDoc(doc(dbInstance, "buildings", building.uid), {
-    models: updatedBuilding.models,
-  });
+    await updateDoc(doc(dbInstance, "buildings", building.uid), {
+      models: updatedBuilding.models,
+    });
 
-  events.trigger({
-    type: "UPDATE_BUILDING",
-    payload: updatedBuilding,
-  });
-  await buildingHandler.refreshModels(updatedBuilding);
-},
+    events.trigger({
+      type: "UPDATE_BUILDING",
+      payload: updatedBuilding,
+    });
+    await buildingHandler.refreshModels(updatedBuilding);
+  },
 
-deleteModel: async (model: Model, building: Building, events: Events) => {
-console.log("DELETE_MODEL payload:", model, building);
-  // Delete IFC file
-  await localModelStore.deleteIFC(model.localKey!);
+  deleteModel: async (model: Model, building: Building, events: Events) => {
+    console.log("DELETE_MODEL args:", { model, building });
+    await localModelStore.deleteIFC(model.localKey!);
+    await localModelStore.deleteFragments(model.localKey!);
 
-  // Also delete fragment cache (force reconversion next open)
-  await localModelStore.deleteFragments(building.uid);
+    const updatedBuilding: Building = {
+      ...building,
+      models: building.models.filter((m) => m.id !== model.id),
+    };
 
-  building.models = building.models.filter((m) => m.id !== model.id);
+    const dbInstance = getFirestore(getApp());
 
-  const dbInstance = getFirestore(getApp());
+    await updateDoc(doc(dbInstance, "buildings", building.uid), {
+      models: updatedBuilding.models,
+    });
 
-  await updateDoc(doc(dbInstance, "buildings", building.uid), {
-    models: building.models,
-  });
+    events.trigger({ type: "UPDATE_BUILDING", payload: updatedBuilding });
 
-  events.trigger({ type: "UPDATE_BUILDING", payload: building });
-  await buildingHandler.refreshModels(building);
-},
+    await buildingHandler.refreshModels(updatedBuilding);
+        console.log("update building")
+  },
 };

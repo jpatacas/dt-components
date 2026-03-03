@@ -24,7 +24,7 @@ const onUploadModel = () => {
       const { name } = file;
       const id = `${name}-${performance.now()}`;
 
-      const model = { id, name }; // 👈 no localKey, no size here
+      const model = { id, name }; // no localKey, no size here
 
       dispatch({
         type: "UPLOAD_MODEL",
@@ -48,7 +48,7 @@ const onUploadModel = () => {
     if (!model) throw new Error("Model not found!")
     newBuilding.models = newBuilding.models.filter((model) => model.id !== id)
     dispatch({ type: "UPDATE_BUILDING", payload: newBuilding });
-    dispatch({type: "DELETE_MODEL", payload: {model, newBuilding}})
+    dispatch({type: "DELETE_MODEL", payload: {model, building: newBuilding}})
   }
 
   return (

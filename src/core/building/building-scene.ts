@@ -1,6 +1,5 @@
 import * as OBC from "@thatopen/components";
 import { type Building } from "../../types";
-import { BuildingDatabase } from "./building-database";
 import workerUrl from "@thatopen/fragments/dist/Worker/worker.mjs?worker&url";
 import { localModelStore } from "../db/local-model-store";
 
@@ -9,8 +8,6 @@ export class BuildingScene {
   private world!: OBC.World;
   private ifcLoader!: OBC.IfcLoader;
   private fragments!: OBC.FragmentsManager;
-
-  private database = new BuildingDatabase();
   private disposed = false;
 
   constructor(
@@ -128,111 +125,92 @@ export class BuildingScene {
   // --------------------------------------------------
 
   private async loadAllModels() {
+    if (!this.building.models?.length) return;
 
-  console.time("Total model load");
+    console.time("Total model loading");
 
-  // ---------------------------------------
-  // Try fragment cache first
-  // ---------------------------------------
+    for (const model of this.building.models) {
+      if (!model.localKey) continue;
 
-  console.time("Fragment cache lookup");
-  const cached = await localModelStore.getFragments(this.building.uid);
-  console.timeEnd("Fragment cache lookup");
+      console.time(`Model ${model.localKey}`);
 
-  if (cached && cached.length > 0) {
+      const cachedFragments = await localModelStore.getFragments(
+        model.localKey,
+      );
 
-    console.time("Fragment load from cache");
+      if (cachedFragments && cachedFragments.length > 0) {
+        console.log("Loading fragments from cache:", model.localKey);
 
-    await this.loadFragments(cached);
+        await this.loadFragments(cachedFragments, model.localKey);
+      } else {
+        console.log("No fragment cache — converting IFC:", model.localKey);
 
-    console.timeEnd("Fragment load from cache");
-    console.timeEnd("Total model load");
+        const file = await localModelStore.getIFC(model.localKey);
 
-    return;
+        if (!file) {
+          console.warn("IFC file missing for:", model.localKey);
+          continue;
+        }
+
+        await this.convertIfcAndCache(file, model.localKey);
+      }
+
+      console.timeEnd(`Model ${model.localKey}`);
+    }
+
+    console.timeEnd("Total model loading");
   }
-
-  // ---------------------------------------
-  // No cache → Load IFC
-  // ---------------------------------------
-
-  console.log("No fragment cache — converting IFC");
-
-  console.time("Retrieve IFC from IndexedDB");
-  const files = await this.database.getModels(this.building);
-  console.timeEnd("Retrieve IFC from IndexedDB");
-
-  console.time("IFC → Fragment conversion");
-
-  for (const file of files) {
-    await this.convertIfcAndCache(file);
-  }
-
-  console.timeEnd("IFC → Fragment conversion");
-  console.timeEnd("Total model load");
-}
 
   // --------------------------------------------------
   // IFC → FRAGMENTS → CACHE
   // --------------------------------------------------
 
-  private async convertIfcAndCache(file: File) {
-
-    console.time("IFC conversion");
+  private async convertIfcAndCache(file: File, modelKey: string) {
+    console.time(`IFC conversion ${modelKey}`);
 
     const buffer = new Uint8Array(await file.arrayBuffer());
 
-    await this.ifcLoader.load(buffer, false, file.name);
+    // Load IFC into scene (FragmentsManager will register it)
+    const fragmentModel = await this.ifcLoader.load(buffer, false, file.name);
 
-    // Extract fragment buffers (3.3 compatible)
-    const fragmentBuffers: ArrayBuffer[] = [];
+    // Export fragment buffer from loaded model
+    const fragmentsBuffer = await fragmentModel.getBuffer(false);
 
-    for (const [, model] of this.fragments.list) {
-      const fragBuffer = await model.getBuffer(false);
-      fragmentBuffers.push(fragBuffer);
-    }
+    // Save fragment buffer per model
+    await localModelStore.saveFragments(modelKey, [fragmentsBuffer]);
 
-    await localModelStore.saveFragments(
-      this.building.uid,
-      fragmentBuffers
-    );
-
-    console.timeEnd("IFC conversion");
+    console.timeEnd(`IFC conversion ${modelKey}`);
   }
 
   // --------------------------------------------------
   // LOAD FRAGMENTS FROM CACHE
   // --------------------------------------------------
 
-  private async loadFragments(buffers: ArrayBuffer[]) {
-
-  console.time("fragments.core.load()");
-
-  await Promise.all(
-    buffers.map(async (buffer) => {
+  private async loadFragments(buffers: ArrayBuffer[], modelKey: string) {
+    for (const buffer of buffers) {
       await this.fragments.core.load(buffer, {
-        modelId: this.building.uid,
+        modelId: modelKey,
       });
-    }),
-  );
+    }
 
-  this.fragments.core.update(true);
-
-  console.timeEnd("fragments.core.load()");
-}
-
-public async refreshModels(building: Building) {
-  this.building = building;
-
-  // Dispose existing fragment models
-  for (const [modelId] of this.fragments.list) {
-    this.fragments.core.disposeModel(modelId);
+    this.fragments.core.update(true);
   }
 
-  // Invalidate fragment cache
-  await localModelStore.deleteFragments(this.building.uid);
+  public async refreshModels(building: Building) {
+    this.building = building;
 
-  // Reload models
-  await this.loadAllModels();
-}
+    if (!this.fragments) return;
 
+    console.log("Refreshing building models");
+
+    // Dispose existing fragment models
+    for (const [modelId] of this.fragments.list) {
+      this.fragments.core.disposeModel(modelId);
+    }
+
+    // Reload all models
+    await this.loadAllModels();
+
+    this.fragments.core.update(true);
+  }
 }
