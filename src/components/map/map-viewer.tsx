@@ -3,6 +3,7 @@ import { useAppContext } from "../../middleware/context-provider";
 import { Navigate } from "react-router-dom";
 import { Button } from "@mui/material";
 import "./map-viewer.css";
+import { NavBar } from "../navbar/navbar";
 
 export const MapViewer: FC = () => {
   const containerRef = useRef(null);
@@ -10,6 +11,13 @@ export const MapViewer: FC = () => {
 
   const [state, dispatch] = useAppContext();
   const { user, building } = state;
+
+  const [width] = useState(240);
+  const [sideOpen, setSideOpen] = useState(false);
+
+  const toggleDrawer = (active: boolean) => {
+    setSideOpen(active);
+  };
 
   const onToggleCreate = () => {
     setIsCreating(!isCreating);
@@ -49,6 +57,7 @@ export const MapViewer: FC = () => {
 
   return (
     <>
+      <NavBar width={width} open={sideOpen} onOpen={() => toggleDrawer(true)} />
       <div
         onContextMenu={onCreate}
         className="full-screen"

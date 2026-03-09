@@ -5,7 +5,7 @@ import IconButton from "@mui/material/IconButton";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import { BuildingSidebar } from "./building-sidebar";
-import { getDrawer, getDrawerHeader } from "./mui-utils";
+import { getDrawer, getDrawerHeader } from "../../utils/mui-utils";
 import { type FrontMenuMode } from "../types";
 
 export const BuildingDrawer: FC<{
