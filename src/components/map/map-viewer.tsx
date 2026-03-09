@@ -4,10 +4,13 @@ import { Navigate } from "react-router-dom";
 import { Button } from "@mui/material";
 import "./map-viewer.css";
 import { NavBar } from "../navbar/navbar";
+import { Drawer } from "./side-menu/drawer";
+import type { Tool } from "../../types";
 
 export const MapViewer: FC = () => {
   const containerRef = useRef(null);
   const [isCreating, setIsCreating] = useState(false); // determine if user is creating a building
+   const [tools, setTools] = useState<Tool[]>([]);
 
   const [state, dispatch] = useAppContext();
   const { user, building } = state;
@@ -18,6 +21,8 @@ export const MapViewer: FC = () => {
   const toggleDrawer = (active: boolean) => {
     setSideOpen(active);
   };
+
+    const toggleFrontMenu = () => {};
 
   const onToggleCreate = () => {
     setIsCreating(!isCreating);
@@ -51,13 +56,24 @@ export const MapViewer: FC = () => {
     return <Navigate to={url} />;
   }
 
-  const onLogout = () => {
-    dispatch({ type: "LOGOUT" });
-  };
+  // const onLogout = () => {
+  //   dispatch({ type: "LOGOUT" });
+  // };
 
   return (
     <>
       <NavBar width={width} open={sideOpen} onOpen={() => toggleDrawer(true)} />
+
+      <Drawer
+        width={width}
+        open={sideOpen}
+        onClose={() => toggleDrawer(false)}
+        onToggleMenu={toggleFrontMenu}
+        toggleCreate={onToggleCreate}
+        tools={tools}
+        isCreating={isCreating}
+      />
+
       <div
         onContextMenu={onCreate}
         className="full-screen"
@@ -69,14 +85,14 @@ export const MapViewer: FC = () => {
           <Button onClick={onToggleCreate}>cancel</Button>
         </div>
       )}
-      <div className="gis-button-container">
+      {/* <div className="gis-button-container">
         <Button variant="contained" onClick={onToggleCreate}>
           Create building
         </Button>
         <Button variant="contained" onClick={onLogout}>
           Log out
         </Button>
-      </div>
+      </div> */}
     </>
   );
 };
