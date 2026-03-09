@@ -16,3 +16,5 @@
   .front-menu-header > Button {
     margin-left: auto;
   }
+
+   .bottom-right { position:absolute; bottom:1rem; right:1rem; } 
