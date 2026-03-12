@@ -1,8 +1,8 @@
 import { useState, type FC } from "react";
 import { useAppContext } from "../../middleware/context-provider";
-import { Box, Button, Card, CardContent, Tab, Tabs, TextField } from "@mui/material";
+import { AppBar, Box, Button, Card, CardContent, Tab, Tabs, TextField, Toolbar, Typography } from "@mui/material";
 import { Navigate } from "react-router-dom";
-import { NavBar } from "../navbar/navbar";
+//import { NavBar } from "../navbar/navbar";
 
 export const LoginForm: FC = () => {
   const [state, dispatch] = useAppContext(); //state and dispatch - need both?
@@ -27,8 +27,18 @@ export const LoginForm: FC = () => {
 
   return (
     <>
-    <NavBar open={false} onOpen={() => {}} width={100} />
+    {/* <NavBar open={false} onOpen={() => {}} width={100} /> */}
         {/* <Button onClick={onLogin}>Log in</Button> */}
+
+      <AppBar position="static">
+        <Toolbar>
+
+          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+            DT Components
+          </Typography>
+ 
+        </Toolbar>
+      </AppBar>
 
             <Card sx={{ maxWidth: 400, margin: "0 auto", marginTop: 20 }}>
       <CardContent sx={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
