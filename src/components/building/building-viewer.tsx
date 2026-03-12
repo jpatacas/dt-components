@@ -1,5 +1,5 @@
 import { type FC, useState } from "react"; //to define a component
-import { Box, CssBaseline } from "@mui/material";
+import { Box, Button, CssBaseline } from "@mui/material";
 import { useAppContext } from "../../middleware/context-provider";
 import { Navigate } from "react-router-dom";
 import { BuildingDrawer } from "./side-menu/building-drawer";
@@ -8,6 +8,7 @@ import { BuildingFrontMenu } from "./front-menu/building-front-menu";
 import { type FrontMenuMode } from "./types";
 import { BuildingViewport } from "./viewport/building-viewport";
 import { NavBar } from "../navbar/navbar";
+import { BottomDrawer } from "./bottom-menu/bottom-drawer";
 
 export const BuildingViewer: FC = () => {
   //menus visibility
@@ -18,6 +19,19 @@ export const BuildingViewer: FC = () => {
 
   // const [state,dispatch] = useAppContext()
   const [{ user, building }] = useAppContext();
+
+  const [bottomOpen, setBottomOpen] = useState(false);
+
+  const buildings: any[] = [];
+
+  const districtKPIs = {
+    buildings: buildings.length,
+    models: buildings.reduce((sum, b) => sum + (b.models?.length || 0), 0),
+  };
+
+  const toggleBottomDrawer = () => {
+    setBottomOpen((prev) => !prev);
+  };
 
   if (!user) {
     return <Navigate to="/login" />;
@@ -65,6 +79,27 @@ export const BuildingViewer: FC = () => {
 
         <BuildingViewport />
       </Box>
+
+      <BottomDrawer
+        open={bottomOpen}
+        toggleDrawer={toggleBottomDrawer}
+        kpis={districtKPIs}
+      />
+
+      {!bottomOpen && (
+        <Button
+          variant="contained"
+          sx={{
+            position: "absolute",
+            bottom: 16,
+            left: "50%",
+            transform: "translateX(-50%)",
+          }}
+          onClick={toggleBottomDrawer}
+        >
+          Show Building KPIs
+        </Button>
+      )}
     </Box>
   );
 };

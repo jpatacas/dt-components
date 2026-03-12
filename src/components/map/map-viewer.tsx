@@ -6,11 +6,12 @@ import "./map-viewer.css";
 import { NavBar } from "../navbar/navbar";
 import { Drawer } from "./side-menu/drawer";
 import type { Tool } from "../../types";
+import { BottomDrawer } from "./bottom-menu/bottom-drawer";
 
 export const MapViewer: FC = () => {
   const containerRef = useRef(null);
   const [isCreating, setIsCreating] = useState(false); // determine if user is creating a building
-   const [tools, setTools] = useState<Tool[]>([]);
+  const [tools, setTools] = useState<Tool[]>([]);
 
   const [state, dispatch] = useAppContext();
   const { user, building } = state;
@@ -18,11 +19,27 @@ export const MapViewer: FC = () => {
   const [width] = useState(240);
   const [sideOpen, setSideOpen] = useState(false);
 
+  const [bottomOpen, setBottomOpen] = useState(false);
+
+const buildings: any[] = [];
+
+const districtKPIs = {
+  buildings: buildings.length,
+  models: buildings.reduce(
+    (sum, b) => sum + (b.models?.length || 0),
+    0
+  ),
+};
+
   const toggleDrawer = (active: boolean) => {
     setSideOpen(active);
   };
 
-    const toggleFrontMenu = () => {};
+  const toggleBottomDrawer = () => {
+  setBottomOpen((prev) => !prev);
+};
+
+  const toggleFrontMenu = () => {};
 
   const onToggleCreate = () => {
     setIsCreating(!isCreating);
@@ -93,6 +110,28 @@ export const MapViewer: FC = () => {
           Log out
         </Button>
       </div> */}
+
+<BottomDrawer
+  open={bottomOpen}
+  toggleDrawer={toggleBottomDrawer}
+  kpis={districtKPIs}
+/>
+
+{!bottomOpen && (
+  <Button
+    variant="contained"
+    sx={{
+      position: "absolute",
+      bottom: 16,
+      left: "50%",
+      transform: "translateX(-50%)",
+    }}
+    onClick={toggleBottomDrawer}
+  >
+    Show District KPIs
+  </Button>
+)}
+
     </>
   );
 };

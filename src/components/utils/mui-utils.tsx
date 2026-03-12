@@ -76,3 +76,14 @@ export function getDrawer(width: number) {
     }),
   }));
 }
+
+export function getBottomDrawer(height: number) {
+  return styled(MuiDrawer)(({ theme }) => ({
+    "& .MuiDrawer-paper": {
+      height: height,
+      overflow: "visible",
+      // top: "auto",
+      // bottom: 0,
+    },
+  }));
+}
