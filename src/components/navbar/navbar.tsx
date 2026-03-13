@@ -1,4 +1,4 @@
-import { useState, type FC } from "react";
+import { type FC } from "react";
 import { Outlet } from "react-router-dom";
 import { getAppBar } from "../utils/mui-utils";
 import {
@@ -10,6 +10,7 @@ import {
   Box,
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
+import { useAppContext } from "../../middleware/context-provider";
 
 export const NavBar: FC<{
   open: boolean;
@@ -20,14 +21,21 @@ export const NavBar: FC<{
 
   const Appbar = getAppBar(width);
 
-  const [alignment, setAlignment] = useState("descriptive");
+  //const [alignment, setAlignment] = useState("descriptive");
 
-  const handleChange = (
-    event: React.MouseEvent<HTMLElement>,
-    newAlignment: string,
-  ) => {
-    setAlignment(newAlignment);
-  };
+  const [state, dispatch] = useAppContext();
+
+const handleChange = (
+  event: React.MouseEvent<HTMLElement>,
+  newMode: string | null
+) => {
+  if (!newMode) return;
+
+  dispatch({
+    type: "SET_DT_MODE",
+    payload: newMode
+  });
+};
 
   return (
     <>
@@ -53,7 +61,7 @@ export const NavBar: FC<{
             }}
           >
             <ToggleButtonGroup
-              value={alignment}
+              value={state.dtMode}
               exclusive
               onChange={handleChange}
               sx={{
