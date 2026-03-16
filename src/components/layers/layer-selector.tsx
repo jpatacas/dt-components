@@ -6,32 +6,43 @@ import {
   ListItemIcon,
   ListItemText,
   Radio,
+  Checkbox,
   Typography,
   Box,
 } from "@mui/material";
 
 export const LayerSelector: FC<{
   open: boolean;
-  layers: {
-    title: string;
-    layers: {
-      id: string;
-      label: string;
-      icon: React.ReactNode;
-    }[];
-  }[];
-  selectedLayers: Record<string, string>;
-  setSelectedLayers: React.Dispatch<
-    React.SetStateAction<Record<string, string>>
-  >;
+  layers: any[];
+  selectedLayers: Record<string, string | string[]>;
+  setSelectedLayers: React.Dispatch<any>;
 }> = ({ open, layers, selectedLayers, setSelectedLayers }) => {
-  if (!layers || layers.length === 0) return null;
+  if (!layers) return null;
 
-  const selectLayer = (groupTitle: string, layerId: string) => {
-    setSelectedLayers((prev) => ({
-      ...prev,
-      [groupTitle]: layerId,
-    }));
+  const toggleLayer = (
+    groupTitle: string,
+    layerId: string,
+    selectionType: "single" | "multiple",
+  ) => {
+    if (selectionType === "single") {
+      setSelectedLayers((prev: any) => ({
+        ...prev,
+        [groupTitle]: layerId,
+      }));
+    } else {
+      setSelectedLayers((prev: any) => {
+        const current = (prev[groupTitle] || []) as string[];
+
+        const updated = current.includes(layerId)
+          ? current.filter((l) => l !== layerId)
+          : [...current, layerId];
+
+        return {
+          ...prev,
+          [groupTitle]: updated,
+        };
+      });
+    }
   };
 
   return (
@@ -41,30 +52,35 @@ export const LayerSelector: FC<{
           {open && (
             <Typography
               variant="caption"
-              sx={{
-                pl: 2,
-                pt: 1,
-                pb: 1,
-                display: "block",
-                opacity: 0.7,
-              }}
+              sx={{ pl: 2, pt: 1, pb: 1, opacity: 0.7 }}
             >
               {group.title}
             </Typography>
           )}
 
           <List dense>
-            {group.layers.map((layer) => {
-              const selected = selectedLayers[group.title] === layer.id;
+            {group.layers.map((layer: any) => {
+              const selected =
+                group.selection === "single"
+                  ? selectedLayers?.[group.title] === layer.id
+                  : (selectedLayers?.[group.title] as string[])?.includes(
+                      layer.id,
+                    );
 
               return (
                 <ListItem key={layer.id} disablePadding>
                   <ListItemButton
-                    onClick={() => selectLayer(group.title, layer.id)}
+                    onClick={() =>
+                      toggleLayer(group.title, layer.id, group.selection)
+                    }
                   >
                     <ListItemIcon sx={{ minWidth: 40 }}>
                       {open ? (
-                        <Radio checked={selected} size="small" />
+                        group.selection === "single" ? (
+                          <Radio checked={selected} size="small" />
+                        ) : (
+                          <Checkbox checked={selected} size="small" />
+                        )
                       ) : (
                         layer.icon
                       )}
