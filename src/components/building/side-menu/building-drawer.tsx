@@ -15,9 +15,9 @@ export const BuildingDrawer: FC<{
   onToggleMenu: (active: boolean, mode?: FrontMenuMode) => void;
   onClose: () => void;
   layers: any[];
-  selectedLayers: Record<string, string>;
+  selectedLayers: Record<string, string | string[]>;
   setSelectedLayers: React.Dispatch<
-    React.SetStateAction<Record<string, string>>
+    React.SetStateAction<Record<string, string | string[]>>
   >;
 }> = (props) => {
   const theme = useTheme();

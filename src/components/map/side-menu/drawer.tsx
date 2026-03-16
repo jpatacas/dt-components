@@ -20,10 +20,10 @@ export const Drawer: FC<{
     action: Function;
   }>;
 layers: any[];
-selectedLayers: Record<string, string>;
-setSelectedLayers: React.Dispatch<
-  React.SetStateAction<Record<string, string>>
->;
+  selectedLayers: Record<string, string | string[]>;
+  setSelectedLayers: React.Dispatch<
+    React.SetStateAction<Record<string, string | string[]>>
+  >;
   isCreating: boolean;
 }> = (props) => {
   const theme = useTheme();

@@ -25,18 +25,22 @@ export const MapViewer: FC = () => {
   //layers
   const layers = getLayers(state);
 
-  const [selectedLayers, setSelectedLayers] = useState<Record<string, string>>(
-    {},
-  );
+  const [selectedLayers, setSelectedLayers] = useState<
+    Record<string, string | string[]>
+  >({});
 
   useEffect(() => {
     if (!layers || layers.length === 0) return;
 
-    const initialSelection: Record<string, string> = {};
+    const initialSelection: Record<string, string | string[]> = {};
 
     layers.forEach((group) => {
-      if (group.layers.length > 0) {
-        initialSelection[group.title] = group.layers[0].id;
+      if (group.selection === "single") {
+        initialSelection[group.title] = group.layers[0]?.id || "";
+      }
+
+      if (group.selection === "multiple") {
+        initialSelection[group.title] = [];
       }
     });
 
