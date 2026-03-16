@@ -29,21 +29,21 @@ export function getSidebarTools(
     },
   );
 
-  if (state.dtMode === "diagnostic") {
-    tools.push({
-      name: "Diagnostics",
-      icon: <AnalyticsIcon />,
-      action: () => console.log("diagnostics"),
-    });
-  }
+  // if (state.dtMode === "diagnostic") {
+  //   tools.push({
+  //     name: "Diagnostics",
+  //     icon: <AnalyticsIcon />,
+  //     action: () => console.log("diagnostics"),
+  //   });
+  // }
 
-  if (state.dtMode === "performance") {
-    tools.push({
-      name: "Performance",
-      icon: <AnalyticsIcon />,
-      action: () => console.log("performance"),
-    });
-  }
+  // if (state.dtMode === "performance") {
+  //   tools.push({
+  //     name: "Performance",
+  //     icon: <AnalyticsIcon />,
+  //     action: () => console.log("performance"),
+  //   });
+  // }
 
   tools.push(
     {

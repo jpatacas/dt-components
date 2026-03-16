@@ -1,4 +1,4 @@
-import { type FC, useState } from "react"; //to define a component
+import { type FC, useEffect, useState } from "react"; //to define a component
 import { Box, Button, CssBaseline } from "@mui/material";
 import { useAppContext } from "../../middleware/context-provider";
 import { Navigate } from "react-router-dom";
@@ -9,6 +9,7 @@ import { type FrontMenuMode } from "./types";
 import { BuildingViewport } from "./viewport/building-viewport";
 import { NavBar } from "../navbar/navbar";
 import { BottomDrawer } from "./bottom-menu/bottom-drawer";
+import { getLayers } from "../layers/layer-registry";
 
 export const BuildingViewer: FC = () => {
   //menus visibility
@@ -17,10 +18,31 @@ export const BuildingViewer: FC = () => {
   const [width] = useState(240); //from MUI
   const [frontMenu, setFrontMenu] = useState<FrontMenuMode>("BuildingInfo");
 
-  // const [state,dispatch] = useAppContext()
-  const [{ user, building }] = useAppContext();
+  const [state, dispatch] = useAppContext();
+  const { user, building } = state;
 
   const [bottomOpen, setBottomOpen] = useState(false);
+
+  //layers
+  const layers = getLayers(state);
+
+  const [selectedLayers, setSelectedLayers] = useState<Record<string, string>>(
+    {},
+  );
+
+  useEffect(() => {
+    if (!layers || layers.length === 0) return;
+
+    const initialSelection: Record<string, string> = {};
+
+    layers.forEach((group) => {
+      if (group.layers.length > 0) {
+        initialSelection[group.title] = group.layers[0].id;
+      }
+    });
+
+    setSelectedLayers(initialSelection);
+  }, [state.dtMode]);
 
   const buildings: any[] = [];
 
@@ -66,6 +88,9 @@ export const BuildingViewer: FC = () => {
         open={sideOpen}
         onClose={() => toggleDrawer(false)}
         onToggleMenu={toggleFrontMenu}
+        layers={layers}
+        selectedLayers={selectedLayers}
+        setSelectedLayers={setSelectedLayers}
       />
 
       <Box component="main" sx={{ flexGrow: 1, p: 3 }}>

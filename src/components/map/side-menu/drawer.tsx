@@ -5,8 +5,8 @@ import IconButton from "@mui/material/IconButton";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import { Sidebar } from "./sidebar";
-import { getDrawer, getDrawerHeader } from "../../utils/mui-utils"
-
+import { getDrawer, getDrawerHeader } from "../../utils/mui-utils";
+import { LayerSelector } from "../../layers/layer-selector";
 
 export const Drawer: FC<{
   open: boolean;
@@ -19,11 +19,26 @@ export const Drawer: FC<{
     icon: React.ReactNode;
     action: Function;
   }>;
+layers: any[];
+selectedLayers: Record<string, string>;
+setSelectedLayers: React.Dispatch<
+  React.SetStateAction<Record<string, string>>
+>;
   isCreating: boolean;
 }> = (props) => {
   const theme = useTheme();
 
-  const { open, width: drawerWidth, onClose, onToggleMenu, toggleCreate, tools } = props;
+  const {
+    open,
+    width: drawerWidth,
+    onClose,
+    onToggleMenu,
+    toggleCreate,
+    tools,
+    layers,
+    selectedLayers,
+    setSelectedLayers
+  } = props;
 
   const Drawer = getDrawer(drawerWidth);
   const DrawerHeader = getDrawerHeader();
@@ -39,8 +54,19 @@ export const Drawer: FC<{
           )}
         </IconButton>
       </DrawerHeader>
-      <Sidebar onToggleMenu={onToggleMenu} open={open} toggleCreate = {toggleCreate} tools={tools}/>
+      <Sidebar
+        onToggleMenu={onToggleMenu}
+        open={open}
+        toggleCreate={toggleCreate}
+        tools={tools}
+      />
       <Divider />
+      <LayerSelector
+        open={open}
+        layers={layers}
+        selectedLayers={selectedLayers}
+        setSelectedLayers={setSelectedLayers}
+      />
     </Drawer>
   );
 };

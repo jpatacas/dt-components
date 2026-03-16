@@ -7,16 +7,30 @@ import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import { BuildingSidebar } from "./building-sidebar";
 import { getDrawer, getDrawerHeader } from "../../utils/mui-utils";
 import { type FrontMenuMode } from "../types";
+import { LayerSelector } from "../../layers/layer-selector";
 
 export const BuildingDrawer: FC<{
   open: boolean;
   width: number;
   onToggleMenu: (active: boolean, mode?: FrontMenuMode) => void;
   onClose: () => void;
+  layers: any[];
+  selectedLayers: Record<string, string>;
+  setSelectedLayers: React.Dispatch<
+    React.SetStateAction<Record<string, string>>
+  >;
 }> = (props) => {
   const theme = useTheme();
 
-  const { open, width: drawerWidth, onClose, onToggleMenu } = props;
+  const {
+    open,
+    width: drawerWidth,
+    onClose,
+    onToggleMenu,
+    layers,
+    selectedLayers,
+    setSelectedLayers,
+  } = props;
 
   const Drawer = getDrawer(drawerWidth);
   const DrawerHeader = getDrawerHeader();
@@ -34,6 +48,12 @@ export const BuildingDrawer: FC<{
       </DrawerHeader>
       <BuildingSidebar onToggleMenu={onToggleMenu} open={open} />
       <Divider />
+      <LayerSelector
+        open={open}
+        layers={layers}
+        selectedLayers={selectedLayers}
+        setSelectedLayers={setSelectedLayers}
+      />
     </Drawer>
   );
 };

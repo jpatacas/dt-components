@@ -7,6 +7,7 @@ import { NavBar } from "../navbar/navbar";
 import { Drawer } from "./side-menu/drawer";
 import type { Tool } from "../../types";
 import { BottomDrawer } from "./bottom-menu/bottom-drawer";
+import { getLayers } from "../layers/layer-registry";
 
 export const MapViewer: FC = () => {
   const containerRef = useRef(null);
@@ -21,23 +22,41 @@ export const MapViewer: FC = () => {
 
   const [bottomOpen, setBottomOpen] = useState(false);
 
-const buildings: any[] = [];
+  //layers
+  const layers = getLayers(state);
 
-const districtKPIs = {
-  buildings: buildings.length,
-  models: buildings.reduce(
-    (sum, b) => sum + (b.models?.length || 0),
-    0
-  ),
-};
+  const [selectedLayers, setSelectedLayers] = useState<Record<string, string>>(
+    {},
+  );
+
+  useEffect(() => {
+    if (!layers || layers.length === 0) return;
+
+    const initialSelection: Record<string, string> = {};
+
+    layers.forEach((group) => {
+      if (group.layers.length > 0) {
+        initialSelection[group.title] = group.layers[0].id;
+      }
+    });
+
+    setSelectedLayers(initialSelection);
+  }, [state.dtMode]);
+
+  const buildings: any[] = [];
+
+  const districtKPIs = {
+    buildings: buildings.length,
+    models: buildings.reduce((sum, b) => sum + (b.models?.length || 0), 0),
+  };
 
   const toggleDrawer = (active: boolean) => {
     setSideOpen(active);
   };
 
   const toggleBottomDrawer = () => {
-  setBottomOpen((prev) => !prev);
-};
+    setBottomOpen((prev) => !prev);
+  };
 
   const toggleFrontMenu = () => {};
 
@@ -88,6 +107,9 @@ const districtKPIs = {
         onToggleMenu={toggleFrontMenu}
         toggleCreate={onToggleCreate}
         tools={tools}
+        layers={layers}
+        selectedLayers={selectedLayers}
+        setSelectedLayers={setSelectedLayers}
         isCreating={isCreating}
       />
 
@@ -111,27 +133,26 @@ const districtKPIs = {
         </Button>
       </div> */}
 
-<BottomDrawer
-  open={bottomOpen}
-  toggleDrawer={toggleBottomDrawer}
-  kpis={districtKPIs}
-/>
+      <BottomDrawer
+        open={bottomOpen}
+        toggleDrawer={toggleBottomDrawer}
+        kpis={districtKPIs}
+      />
 
-{!bottomOpen && (
-  <Button
-    variant="contained"
-    sx={{
-      position: "absolute",
-      bottom: 16,
-      left: "50%",
-      transform: "translateX(-50%)",
-    }}
-    onClick={toggleBottomDrawer}
-  >
-    Show District KPIs
-  </Button>
-)}
-
+      {!bottomOpen && (
+        <Button
+          variant="contained"
+          sx={{
+            position: "absolute",
+            bottom: 16,
+            left: "50%",
+            transform: "translateX(-50%)",
+          }}
+          onClick={toggleBottomDrawer}
+        >
+          Show District KPIs
+        </Button>
+      )}
     </>
   );
 };

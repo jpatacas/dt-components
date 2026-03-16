@@ -9,6 +9,7 @@ import AnalyticsIcon from "@mui/icons-material/Insights";
 export function getMapTools(
   state: State,
   dispatch: React.Dispatch<Action>,
+  toggleMenu: (active: boolean) => void,
   toggleCreate: () => void,
 ): Tool[] {
   const mode = state.dtMode;
@@ -18,7 +19,10 @@ export function getMapTools(
   tools.push({
     name: "Create building",
     icon: <AddBuildingIcon />,
-    action: toggleCreate,
+       action: () => {
+        toggleCreate();
+        toggleMenu(false);
+      },
   });
 
   // Descriptive
@@ -26,23 +30,23 @@ export function getMapTools(
 
   }
 
-  // Diagnostic
-  if (mode === "diagnostic") {
-    tools.push({
-      name: "District diagnostics",
-      icon: <AnalyticsIcon />,
-      action: () => console.log("diagnostics"),
-    });
-  }
+  // // Diagnostic
+  // if (mode === "diagnostic") {
+  //   tools.push({
+  //     name: "District diagnostics",
+  //     icon: <AnalyticsIcon />,
+  //     action: () => console.log("diagnostics"),
+  //   });
+  // }
 
-  // Performance
-  if (mode === "performance") {
-    tools.push({
-      name: "District performance",
-      icon: <AnalyticsIcon />,
-      action: () => console.log("performance"),
-    });
-  }
+  // // Performance
+  // if (mode === "performance") {
+  //   tools.push({
+  //     name: "District performance",
+  //     icon: <AnalyticsIcon />,
+  //     action: () => console.log("performance"),
+  //   });
+  // }
 
   tools.push({
     name: "Logout",
