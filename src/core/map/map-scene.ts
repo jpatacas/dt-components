@@ -21,6 +21,8 @@ export class MapScene {
 
   private events: Events;
 
+  private sensors: any[] = [];
+
   constructor(container: HTMLDivElement, events: Events) {
     this.events = events;
     this.ready = new Promise((resolve) => {
@@ -57,6 +59,7 @@ export class MapScene {
     this.map.on("load", () => {
       this.mapLoaded = true;
       this.setupBuildingSource();
+      this.setupSensorSource();
       this.setupInteractions();
       this.resolveReady();
     });
@@ -256,6 +259,21 @@ export class MapScene {
       this.onBuildingSelected(building);
     });
 
+    this.map.on("click", "sensor-layer", (e) => {
+      const feature = e.features?.[0];
+      if (!feature) return;
+
+      const coords = feature.geometry.coordinates.slice();
+
+      const name = feature.properties?.name;
+      const broker = feature.properties?.broker;
+
+      new MAPBOX.Popup()
+        .setLngLat(coords)
+        .setHTML(`<b>${name}</b><br/>Broker: ${broker}`)
+        .addTo(this.map);
+    });
+
     this.map.on("mouseenter", "user-buildings-layer", () => {
       this.map.getCanvas().style.cursor = "pointer";
     });
@@ -316,5 +334,73 @@ export class MapScene {
       buildings: [],
     };
   }
-}
 
+  //Sensors
+
+  private setupSensorSource() {
+    this.map.addSource("sensors", {
+      type: "geojson",
+      data: {
+        type: "FeatureCollection",
+        features: [],
+      },
+    });
+
+    this.map.addLayer({
+      id: "sensor-layer",
+      type: "circle",
+      source: "sensors",
+      paint: {
+        "circle-radius": 5,
+        "circle-color": "#ff0000",
+        "circle-stroke-width": 1,
+        "circle-stroke-color": "#ffffff",
+      },
+    });
+  }
+
+  private getSensorGeoJSON(): GeoJSON.FeatureCollection {
+    return {
+      type: "FeatureCollection",
+      features: this.sensors.map((s) => ({
+        type: "Feature",
+        geometry: {
+          type: "Point",
+          coordinates: [s.lon, s.lat],
+        },
+        properties: {
+          name: s.name,
+          broker: s.broker,
+        },
+      })),
+    };
+  }
+
+  public async updateSensors(sensors: any[]) {
+    this.sensors = sensors;
+
+    if (!this.mapLoaded) {
+      await this.ready;
+    }
+
+    const source = this.map.getSource("sensors") as MAPBOX.GeoJSONSource;
+
+    if (source) {
+      source.setData(this.getSensorGeoJSON());
+      this.map.setLayoutProperty("sensor-layer", "visibility", "visible");
+    }
+  }
+
+  public clearSensors() {
+  const source = this.map.getSource("sensors") as MAPBOX.GeoJSONSource;
+
+  if (source) {
+    // source.setData({
+    //   type: "FeatureCollection",
+    //   features: [],
+    // });
+
+    this.map.setLayoutProperty("sensor-layer", "visibility", "none");
+  }
+}
+}

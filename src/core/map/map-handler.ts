@@ -24,4 +24,17 @@ export const mapHandler = {
       await this.viewer.addBuilding(user);
     }
   },
+  updateSensors(sensors: any[]) {
+
+    console.log("Sensors loaded:", sensors.length);
+    if (this.viewer) {
+      this.viewer.updateSensors(sensors);
+    }
+  },
+  clearSensors() {
+  if (this.viewer) {
+    this.viewer.clearSensors();
+}
+
+}
 };
