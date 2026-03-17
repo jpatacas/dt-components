@@ -17,6 +17,7 @@ export function getLayers(state: any) {
         layers: [
           { id: "buildings", label: "Buildings", icon: <ApartmentIcon /> },
           { id: "satellite", label: "Satellite", icon: <SatelliteIcon /> },
+          { id: "sensors", label: "Sensors", icon: <SensorsIcon /> }, //GET /sensors/json in UO API
         ],
       },
     ];
@@ -26,19 +27,21 @@ export function getLayers(state: any) {
         title: "Diagnostic",
         selection: "multiple",
         layers: [
-          { id: "temperature", label: "Temperature", icon: <ThermostatIcon /> },
-          { id: "occupancy", label: "Occupancy", icon: <SensorsIcon /> },
-          { id: "energyFlow", label: "Energy Flow", icon: <BoltIcon /> },
+          { id: "temperature", label: "Temperature", icon: <ThermostatIcon /> }, //GET /sensors/data/json?variables=Temperature&last_n_hours=1
+          { id: "humidity", label: "Humidity", icon: <SensorsIcon /> },
+          { id: "pm25", label: "PM2.5", icon: <SensorsIcon /> },
+          { id: "no2", label: "NO2", icon: <SensorsIcon /> },
         ],
       });
     }
 
-    if (mode === "performance") {
+    if (mode === "performance") { // /sensors/data/json?last_n_days=1
       groups.push({
         title: "Performance",
         selection: "single",
         layers: [
-          { id: "energyKPI", label: "Energy KPI", icon: <AnalyticsIcon /> },
+          { id: "aqi", label: "Air Quality Index", icon: <AnalyticsIcon /> },
+          { id: "heatisland", label: "Heat Island intensity", icon: <AnalyticsIcon /> },
         ],
       });
     }
