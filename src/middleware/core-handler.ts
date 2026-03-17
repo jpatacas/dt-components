@@ -3,6 +3,7 @@ import { databaseHandler } from "../core/db/db-handler";
 import type { Action } from "./actions";
 import { Events } from "./event-handler";
 import { buildingHandler } from "../core/building/building-handler";
+import { sensorHandler } from "../core/map/sensor-handler";
 
 export const executeCore = async (action: Action, events: Events) => {
   if (action.type === "LOGIN") {
@@ -45,4 +46,13 @@ export const executeCore = async (action: Action, events: Events) => {
   if (action.type === "CLOSE_BUILDING") {
     return buildingHandler.remove();
   }
+  if (action.type === "FETCH_SENSORS") {
+    return sensorHandler.fetch(events);
+  }
+  if (action.type === "SET_SENSORS") {
+    return mapHandler.updateSensors(action.payload);
+  }
+  if (action.type === "CLEAR_SENSORS") {
+  return mapHandler.clearSensors();
+}
 };

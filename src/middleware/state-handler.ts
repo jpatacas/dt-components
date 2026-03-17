@@ -15,5 +15,12 @@ export const reducer = (state: State, action: Action) => {
   if (action.type === "SET_DT_MODE") {
     return { ...state, dtMode: action.payload };
   }
+
+  if (action.type === "SET_SENSORS") {
+    return {
+      ...state,
+      sensors: action.payload,
+    };
+  }
   return { ...state };
 };
