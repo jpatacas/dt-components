@@ -38,7 +38,43 @@ export interface LngLat {
 
 export interface Tool {
   name: string;
-   active?: boolean;
+  active?: boolean;
   icon: any;
   action: (...args: any) => void;
+}
+
+/**
+ * UI-safe layer config (used by LayerSelector)
+ */
+export interface LayerConfig {
+  id: string;
+  label: string;
+  group: string;
+
+  // UI behaviour
+  selection: "single" | "multi";
+
+  // optional UI metadata
+  description?: string;
+  icon?: any;
+}
+
+/**
+ * Full layer definition (used by MapScene / core)
+ */
+export interface LayerDefinition extends LayerConfig {
+  /**
+   * Optional data fetcher (API, Firebase, etc.)
+   */
+  fetch?: () => Promise<any>;
+
+  /**
+   * Add layer to map
+   */
+  add: (map: mapboxgl.Map, data?: any) => void;
+
+  /**
+   * Remove layer from map
+   */
+  remove: (map: mapboxgl.Map) => void;
 }
