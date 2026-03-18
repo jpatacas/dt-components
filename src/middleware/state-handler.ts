@@ -16,11 +16,11 @@ export const reducer = (state: State, action: Action) => {
     return { ...state, dtMode: action.payload };
   }
 
-  if (action.type === "SET_SENSORS") {
-    return {
-      ...state,
-      sensors: action.payload,
-    };
-  }
+  if (action.type === "UPDATE_LAYERS") {
+  return {
+    ...state,
+    activeLayers: action.payload,
+  };
+}
   return { ...state };
 };
