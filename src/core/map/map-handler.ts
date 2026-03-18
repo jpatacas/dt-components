@@ -9,7 +9,7 @@ export const mapHandler = {
     if (!this.viewer) {
       console.log("map started");
       this.viewer = new MapScene(container, events);
-      await this.viewer.loadBuildings(user)
+      await this.viewer.loadBuildings(user);
     }
   },
   remove() {
@@ -19,22 +19,26 @@ export const mapHandler = {
       this.viewer = null;
     }
   },
-    async addBuilding(user: User) {
+  async addBuilding(user: User) {
     if (this.viewer) {
       await this.viewer.addBuilding(user);
     }
   },
   updateSensors(sensors: any[]) {
-
     console.log("Sensors loaded:", sensors.length);
     if (this.viewer) {
       this.viewer.updateSensors(sensors);
     }
   },
   clearSensors() {
-  if (this.viewer) {
-    this.viewer.clearSensors();
-}
-
-}
+    if (this.viewer) {
+      this.viewer.clearSensors();
+    }
+  },
+  async updateLayers(layerIds: string[]) {
+    console.log("layers loaded:", layerIds.length);
+    if (this.viewer) {
+      await this.viewer.updateLayers(layerIds);
+    }
+  },
 };

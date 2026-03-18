@@ -4,6 +4,7 @@ import type { Building, GisParameters, LngLat } from "../../types";
 import type { User } from "firebase/auth";
 import { MapDatabase } from "./map-database";
 import type { Events } from "../../middleware/event-handler";
+import { layerRegistry } from "../layers/layer-registry";
 
 export class MapScene {
   private map!: MAPBOX.Map;
@@ -21,7 +22,7 @@ export class MapScene {
 
   private events: Events;
 
-  private sensors: any[] = [];
+  private activeLayers = new Set<string>();
 
   constructor(container: HTMLDivElement, events: Events) {
     this.events = events;
@@ -59,7 +60,7 @@ export class MapScene {
     this.map.on("load", () => {
       this.mapLoaded = true;
       this.setupBuildingSource();
-      this.setupSensorSource();
+      //this.setupSensorSource();
       this.setupInteractions();
       this.resolveReady();
     });
@@ -245,7 +246,7 @@ export class MapScene {
       };
     });
 
-    // Click building icon
+    // Click building icon - need to change this?
     this.map.on("click", "user-buildings-layer", (e) => {
       const feature = e.features?.[0];
       if (!feature) return;
@@ -259,18 +260,19 @@ export class MapScene {
       this.onBuildingSelected(building);
     });
 
-    this.map.on("click", "sensor-layer", (e) => {
-      const feature = e.features?.[0];
-      if (!feature) return;
+    this.map.on("click", (e) => {
+      const features = this.map.queryRenderedFeatures(e.point, {
+        layers: ["sensor-layer"],
+      });
 
-      const coords = feature.geometry.coordinates.slice();
+      if (!features.length) return;
 
-      const name = feature.properties?.name;
-      const broker = feature.properties?.broker;
+      const feature = features[0];
+      const coords = (feature.geometry as any).coordinates.slice();
 
       new MAPBOX.Popup()
         .setLngLat(coords)
-        .setHTML(`<b>${name}</b><br/>Broker: ${broker}`)
+        .setHTML(`<b>${feature.properties?.name}</b>`)
         .addTo(this.map);
     });
 
@@ -335,72 +337,44 @@ export class MapScene {
     };
   }
 
-  //Sensors
+  public async updateLayers(layerIds: string[]) {
+    await this.ready;
 
-  private setupSensorSource() {
-    this.map.addSource("sensors", {
-      type: "geojson",
-      data: {
-        type: "FeatureCollection",
-        features: [],
-      },
-    });
+    const next = new Set(layerIds.filter(Boolean)); //  remove undefined
 
-    this.map.addLayer({
-      id: "sensor-layer",
-      type: "circle",
-      source: "sensors",
-      paint: {
-        "circle-radius": 5,
-        "circle-color": "#ff0000",
-        "circle-stroke-width": 1,
-        "circle-stroke-color": "#ffffff",
-      },
-    });
-  }
+    console.log("Selected layers:", layerIds);
+    console.log("Registry keys:", Object.keys(layerRegistry));
 
-  private getSensorGeoJSON(): GeoJSON.FeatureCollection {
-    return {
-      type: "FeatureCollection",
-      features: this.sensors.map((s) => ({
-        type: "Feature",
-        geometry: {
-          type: "Point",
-          coordinates: [s.lon, s.lat],
-        },
-        properties: {
-          name: s.name,
-          broker: s.broker,
-        },
-      })),
-    };
-  }
-
-  public async updateSensors(sensors: any[]) {
-    this.sensors = sensors;
-
-    if (!this.mapLoaded) {
-      await this.ready;
+    // REMOVE old
+    for (const id of this.activeLayers) {
+      if (!next.has(id)) {
+        const layer = layerRegistry[id];
+        if (layer) {
+          layer.remove(this.map);
+        }
+      }
     }
 
-    const source = this.map.getSource("sensors") as MAPBOX.GeoJSONSource;
+    // ADD new
+    for (const id of next) {
+      if (!this.activeLayers.has(id)) {
+        const layer = layerRegistry[id];
 
-    if (source) {
-      source.setData(this.getSensorGeoJSON());
-      this.map.setLayoutProperty("sensor-layer", "visibility", "visible");
+        if (!layer) {
+          console.warn(`Layer not registered: ${id}`);
+          continue;
+        }
+
+        if (layer.fetch) {
+          const data = await layer.fetch();
+          layer.add(this.map, data);
+        } else {
+          layer.add(this.map);
+        }
+
+      }
     }
+
+    this.activeLayers = next;
   }
-
-  public clearSensors() {
-  const source = this.map.getSource("sensors") as MAPBOX.GeoJSONSource;
-
-  if (source) {
-    // source.setData({
-    //   type: "FeatureCollection",
-    //   features: [],
-    // });
-
-    this.map.setLayoutProperty("sensor-layer", "visibility", "none");
-  }
-}
 }
