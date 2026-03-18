@@ -22,8 +22,6 @@ export const MapViewer: FC = () => {
 
   const [bottomOpen, setBottomOpen] = useState(false);
 
-
-
   //layers
   const layers = getLayers(state);
 
@@ -49,24 +47,14 @@ export const MapViewer: FC = () => {
     setSelectedLayers(initialSelection);
   }, [state.dtMode]);
 
-    //sensors
+  useEffect(() => {
+    const selected = Object.values(selectedLayers).flat().filter(Boolean);
 
-  const {sensors} = state;
-
-useEffect(() => {
-  const descriptiveLayer = selectedLayers["Descriptive"];
-
-  if (descriptiveLayer === "sensors") {
-    dispatch({ type: "FETCH_SENSORS" });
-  } else {
-    dispatch({type: "CLEAR_SENSORS"})
-  }
-
-}, [selectedLayers]);
-
-useEffect(() => {
-  console.log("Selected layers:", selectedLayers);
-}, [selectedLayers]);
+    dispatch({
+      type: "UPDATE_LAYERS",
+      payload: selected,
+    });
+  }, [selectedLayers]);
 
   const buildings: any[] = [];
 
