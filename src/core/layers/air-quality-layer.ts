@@ -124,6 +124,10 @@ export const airQualityLayer = {
         "heatmap-opacity": 0.8,
       },
     });
+    map.flyTo({
+      center: features[0].geometry.coordinates,
+      zoom: 12,
+    });
   },
 
   remove: (map: mapboxgl.Map) => {

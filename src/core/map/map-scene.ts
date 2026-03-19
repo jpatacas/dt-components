@@ -75,7 +75,8 @@ export class MapScene {
 
     const buildings = await this.database.getBuildings(user);
     this.buildings = buildings;
-    this.updateBuildingSource();
+    //this.updateBuildingSource();
+    this.updateBuildingLayer();
   }
 
   public async addBuilding(user: User) {
@@ -97,7 +98,8 @@ export class MapScene {
 
     // Optimistic local update (optional if using subscribe)
     this.buildings.push(building);
-    this.updateBuildingSource();
+    //this.updateBuildingSource();
+    this.updateBuildingLayer();
   }
 
   // ----------------------------------
@@ -105,10 +107,10 @@ export class MapScene {
   // ----------------------------------
 
   private setupBuildingSource() {
-    this.map.addSource("user-buildings", {
-      type: "geojson",
-      data: this.getBuildingGeoJSON(),
-    });
+    // this.map.addSource("user-buildings", {
+    //   type: "geojson",
+    //   data: this.getBuildingGeoJSON(),
+    // });
 
     this.map.addSource("eraser", {
       type: "geojson",
@@ -170,16 +172,6 @@ export class MapScene {
     });
 
     this.map.addLayer({
-      id: "user-buildings-layer",
-      type: "circle",
-      source: "user-buildings",
-      paint: {
-        "circle-radius": 6,
-        "circle-color": "#0077ff",
-      },
-    });
-
-    this.map.addLayer({
       id: "add-3d-buildings",
       source: "composite",
       "source-layer": "building",
@@ -224,12 +216,15 @@ export class MapScene {
     });
   }
 
-  private updateBuildingSource() {
-    if (!this.mapLoaded) return;
+  private updateBuildingLayer() {
+    const layer = layerRegistry["buildings"]; //"user-buildings"?
 
-    const source = this.map.getSource("user-buildings") as MAPBOX.GeoJSONSource;
-    if (source) {
-      source.setData(this.getBuildingGeoJSON());
+    if (!layer) return;
+
+    if (!this.activeLayers.has("buildings")) return;
+
+    if ((layer as any).update) {
+      (layer as any).update(this.map, this.buildings);
     }
   }
 
@@ -365,13 +360,17 @@ export class MapScene {
           continue;
         }
 
+        if (id === "buildings") {
+          layer.add(this.map, this.buildings);
+          continue;
+        }
+
         if (layer.fetch) {
           const data = await layer.fetch();
           layer.add(this.map, data);
         } else {
           layer.add(this.map);
         }
-
       }
     }
 

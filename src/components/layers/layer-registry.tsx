@@ -16,7 +16,7 @@ export function getLayers(state: any) {
         selection: "single",
         layers: [
           { id: "buildings", label: "Buildings", icon: <ApartmentIcon /> },
-          { id: "satellite", label: "Satellite", icon: <SatelliteIcon /> },
+          // { id: "satellite", label: "Satellite", icon: <SatelliteIcon /> },
           { id: "sensors", label: "Sensors", icon: <SensorsIcon /> }, //GET /sensors/json in UO API
         ],
       },
@@ -56,7 +56,8 @@ export function getLayers(state: any) {
         selection: "single",
         layers: [
           { id: "buildings", label: "Structure", icon: <ApartmentIcon /> },
-          { id: "satellite", label: "Satellite", icon: <SatelliteIcon /> },
+          // { id: "satellite", label: "Satellite", icon: <SatelliteIcon /> },
+          { id: "building-sensors", label: "Sensors", icon: <SensorsIcon /> },
         ],
       },
     ];

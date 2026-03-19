@@ -35,6 +35,9 @@ export const MapViewer: FC = () => {
     const initialSelection: Record<string, string | string[]> = {};
 
     layers.forEach((group) => {
+      if (group.title === "Descriptive") {
+        initialSelection[group.title] = "buildings";
+      }
       if (group.selection === "single") {
         initialSelection[group.title] = group.layers[0]?.id || "";
       }
