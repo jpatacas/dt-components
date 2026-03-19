@@ -73,10 +73,10 @@ export const sensorLayer = {
     });
 
     // zoom to sensors (debug)
-    // map.flyTo({
-    //   center: features[0].geometry.coordinates,
-    //   zoom: 12,
-    // });
+    map.flyTo({
+      center: features[0].geometry.coordinates,
+      zoom: 12,
+    });
   },
 
   remove: (map: mapboxgl.Map) => {
