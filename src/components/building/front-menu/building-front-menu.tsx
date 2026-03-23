@@ -5,6 +5,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import { BuildingInfoMenu } from "./front-menu-content/building-info-menu";
 import type { FrontMenuMode } from "../types";
 import { ModelListMenu } from "./front-menu-content/model-list-menu";
+import { FloorplanMenu } from "./front-menu-content/floorplan-menu";
 
 //export type FrontMenuMode = "BuildingInfo"; // if mode == properties, display properties etc...
 
@@ -20,10 +21,12 @@ export const BuildingFrontMenu: FC<{
   const content = new Map<FrontMenuMode, any>();
   content.set("BuildingInfo", <BuildingInfoMenu onToggleMenu={onToggleMenu} />);
   content.set("ModelList", <ModelListMenu />);
+  content.set("Floorplans", <FloorplanMenu/>);
 
   const titles = {
     BuildingInfo: "Building Information",
     ModelList: "Model List",
+    Floorplans: "Floor plans"
   };
 
   const title = titles[mode];

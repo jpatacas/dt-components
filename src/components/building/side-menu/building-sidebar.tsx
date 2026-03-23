@@ -23,7 +23,7 @@ export const BuildingSidebar: FC<{
     <List>
       {tools.map((tool) => (
         <ListItem
-          onClick={tool.action}
+          onClick={() => tool.action({ onToggleMenu, state, dispatch })}
           key={tool.name}
           disablePadding
           sx={{ display: "block" }}

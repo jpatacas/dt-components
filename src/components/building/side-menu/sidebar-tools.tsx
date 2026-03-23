@@ -7,7 +7,8 @@ import MapIcon from "@mui/icons-material/Map";
 import DeleteIcon from "@mui/icons-material/Delete";
 import LogoutIcon from "@mui/icons-material/Logout";
 import ModelIcon from "@mui/icons-material/HolidayVillage";
-import AnalyticsIcon from "@mui/icons-material/Insights";
+//import AnalyticsIcon from "@mui/icons-material/Insights";
+import LayersIcon from "@mui/icons-material/Layers";
 
 export function getSidebarTools(
   state: State,
@@ -46,6 +47,14 @@ export function getSidebarTools(
   // }
 
   tools.push(
+    {
+      name: "Floor plans",
+      active: false,
+      icon: <LayersIcon />,
+      action: ({ onToggleMenu }) => { //need to remove onToggleMenu?
+        onToggleMenu(true, "Floorplans");
+      },
+    },
     {
       name: "Back to map",
       icon: <MapIcon />,
