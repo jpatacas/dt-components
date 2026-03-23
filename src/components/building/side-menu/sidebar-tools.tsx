@@ -9,6 +9,7 @@ import LogoutIcon from "@mui/icons-material/Logout";
 import ModelIcon from "@mui/icons-material/HolidayVillage";
 //import AnalyticsIcon from "@mui/icons-material/Insights";
 import LayersIcon from "@mui/icons-material/Layers";
+import PropertiesIcon from "@mui/icons-material/Info";
 
 export function getSidebarTools(
   state: State,
@@ -51,8 +52,17 @@ export function getSidebarTools(
       name: "Floor plans",
       active: false,
       icon: <LayersIcon />,
-      action: ({ onToggleMenu }) => { //need to remove onToggleMenu?
+      action: ({ onToggleMenu }) => {
+        //need to remove onToggleMenu?
         onToggleMenu(true, "Floorplans");
+      },
+    },
+    {
+      name: "Properties",
+      active: false,
+      icon: <PropertiesIcon />,
+      action: ({ onToggleMenu }) => {
+        onToggleMenu(true, "Properties");
       },
     },
     {
