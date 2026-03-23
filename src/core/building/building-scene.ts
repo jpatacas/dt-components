@@ -1,7 +1,8 @@
 import * as OBC from "@thatopen/components";
-import { type Building } from "../../types";
+import { type Building, type Floorplan } from "../../types";
 import workerUrl from "@thatopen/fragments/dist/Worker/worker.mjs?worker&url";
 import { localModelStore } from "../db/local-model-store";
+import type { Events } from "../../middleware/event-handler";
 
 export class BuildingScene {
   private components: OBC.Components;
@@ -10,10 +11,16 @@ export class BuildingScene {
   private fragments!: OBC.FragmentsManager;
   private disposed = false;
 
+  private events: Events;
+  private floorplans: Floorplan[] = [];
+  private views!: OBC.Views;
+
   constructor(
     private container: HTMLDivElement,
     private building: Building,
+    events: Events,
   ) {
+    this.events = events;
     this.components = new OBC.Components();
   }
 
@@ -118,6 +125,32 @@ export class BuildingScene {
 
     // Load models
     await this.loadAllModels();
+
+    //Views - for floorplans
+
+    this.views = this.components.get(OBC.Views);
+
+    OBC.Views.defaultRange = 100;
+    this.views.world = this.world;
+
+    // Debug listener
+    this.views.list.onItemSet.add(({ key }) => {
+      console.log("View created:", key);
+    });
+
+    await this.views.createFromIfcStoreys();
+
+    // Build your floorplans array (same structure as before)
+    this.floorplans = [...this.views.list.keys()].map((name) => ({
+      id: name,
+      name,
+    }));
+
+    // Trigger your existing event system (unchanged)
+    this.events.trigger({
+      type: "UPDATE_FLOORPLANS",
+      payload: this.floorplans,
+    });
   }
 
   // --------------------------------------------------
@@ -213,4 +246,25 @@ export class BuildingScene {
 
     this.fragments.core.update(true);
   }
+
+toggleFloorplan(active: boolean, floorplan?: Floorplan) {
+  if (!this.views || !this.floorplans.length) return;
+
+  if (active && floorplan) {
+    // Hide grid (same as before)
+    const grids = this.components.get(OBC.Grids);
+    grids.list.forEach((grid) => (grid.visible = false));
+
+    // Open the view
+    this.views.open(floorplan.id);
+
+  } else {
+    // Show grid again
+    const grids = this.components.get(OBC.Grids);
+    grids.list.forEach((grid) => (grid.visible = true));
+
+    // Exit 2D mode
+    this.views.close();
+  }
+}
 }

@@ -17,10 +17,13 @@ export const reducer = (state: State, action: Action) => {
   }
 
   if (action.type === "UPDATE_LAYERS") {
-  return {
-    ...state,
-    activeLayers: action.payload,
-  };
-}
+    return {
+      ...state,
+      activeLayers: action.payload,
+    };
+  }
+  if (action.type === "UPDATE_FLOORPLANS") {
+    return { ...state, floorplans: action.payload };
+  }
   return { ...state };
 };

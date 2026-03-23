@@ -1,5 +1,5 @@
 import { type User } from "firebase/auth";
-import type { Building } from "../types";
+import type { Building, Floorplan } from "../types";
 
 export interface State {
     user: User | null;
@@ -7,6 +7,7 @@ export interface State {
     dtMode: string; //or string?
     sensors: Sensor[];
     map?: any;
+    floorplans: Floorplan[];
 }
 
 export interface Sensor {
@@ -20,5 +21,6 @@ export const initialState: State = {
     user: null,
     building: null,
     dtMode: "descriptive",
-    sensors: []
+    sensors: [],
+    floorplans: [],
 }

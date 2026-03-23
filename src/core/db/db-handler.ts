@@ -83,7 +83,7 @@ export const databaseHandler = {
       type: "UPDATE_BUILDING",
       payload: updatedBuilding,
     });
-    await buildingHandler.refreshModels(updatedBuilding);
+    await buildingHandler.refreshModels(updatedBuilding, events);
   },
 
   deleteModel: async (model: Model, building: Building, events: Events) => {
@@ -104,7 +104,7 @@ export const databaseHandler = {
 
     events.trigger({ type: "UPDATE_BUILDING", payload: updatedBuilding });
 
-    await buildingHandler.refreshModels(updatedBuilding);
+    await buildingHandler.refreshModels(updatedBuilding, events);
         console.log("update building")
   },
 };

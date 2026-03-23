@@ -43,6 +43,11 @@ export interface Tool {
   action: (...args: any) => void;
 }
 
+export interface Floorplan {
+  name: string;
+  id: string;
+}
+
 /**
  * UI-safe layer config (used by LayerSelector)
  */

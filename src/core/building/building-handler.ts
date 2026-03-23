@@ -1,11 +1,12 @@
 import { BuildingScene } from "./building-scene";
-import { type Building } from "../../types";
+import { type Building, type Floorplan } from "../../types";
+import type { Events } from "../../middleware/event-handler";
 
 export const buildingHandler = {
   viewer: null as BuildingScene | null,
   currentBuilding: null as Building | null,
 
-  async start(container: HTMLDivElement, building: Building) {
+  async start(container: HTMLDivElement, building: Building, events: Events) {
     console.log("Creating new BuildingScene");
     // Always destroy old viewer
     if (this.viewer) {
@@ -14,11 +15,11 @@ export const buildingHandler = {
     }
 
     this.currentBuilding = building;
-    this.viewer = new BuildingScene(container, building);
+    this.viewer = new BuildingScene(container, building, events);
     await this.viewer.initialize();
   },
 
-  async refreshModels(building: Building) {
+  async refreshModels(building: Building, events: Events) {
     if (!this.viewer) return;
     if (!this.currentBuilding) return;
 
@@ -36,6 +37,11 @@ export const buildingHandler = {
       //this.viewer.dispose();
       //this.viewer = null;
       this.viewer.hide();
+    }
+  },
+  toggleFloorplan(active: boolean, floorplan?: Floorplan) {
+    if (this.viewer) {
+      this.viewer.toggleFloorplan(active, floorplan);
     }
   },
 };
