@@ -1,8 +1,9 @@
 import * as OBC from "@thatopen/components";
-import { type Building, type Floorplan } from "../../types";
+import type { Building, Floorplan } from "../../types";
 import workerUrl from "@thatopen/fragments/dist/Worker/worker.mjs?worker&url";
 import { localModelStore } from "../db/local-model-store";
 import type { Events } from "../../middleware/event-handler";
+import * as THREE from "three";
 
 export class BuildingScene {
   private components: OBC.Components;
@@ -14,6 +15,17 @@ export class BuildingScene {
   private events: Events;
   private floorplans: Floorplan[] = [];
   private views!: OBC.Views;
+  private caster!: OBC.Raycasters;
+
+  private sceneEvents: { name: string; action: any }[] = [];
+
+  private selected: { modelId: string; localId: number } | null = null;
+  private preselected: { modelId: string; localId: number } | null = null;
+
+  private fragmentsReady = false;
+  private preselectRAF: number | null = null;
+
+  private color = new THREE.Color("purple");
 
   constructor(
     private container: HTMLDivElement,
@@ -42,6 +54,12 @@ export class BuildingScene {
 
   dispose() {
     this.disposed = true;
+    this.toggleEvents(false);
+
+    if (this.preselectRAF !== null) {
+      cancelAnimationFrame(this.preselectRAF);
+      this.preselectRAF = null;
+    }
     this.components.dispose();
   }
 
@@ -126,6 +144,12 @@ export class BuildingScene {
     // Load models
     await this.loadAllModels();
 
+    this.fragmentsReady = true;
+    this.setupEvents();
+
+    const raycasters = this.components.get(OBC.Raycasters);
+    this.caster = raycasters.get(this.world);
+
     //Views - for floorplans
 
     this.views = this.components.get(OBC.Views);
@@ -138,19 +162,20 @@ export class BuildingScene {
       console.log("View created:", key);
     });
 
-    await this.views.createFromIfcStoreys();
+    await this.views.createFromIfcStoreys(); //storeyNames?: RegExp[]; use this to filter by some IFC modelling requirement (e.g. Level...)
 
-    // Build your floorplans array (same structure as before)
+    // Build floorplans array
     this.floorplans = [...this.views.list.keys()].map((name) => ({
       id: name,
       name,
     }));
 
-    // Trigger your existing event system (unchanged)
+    // Trigger existing event system
     this.events.trigger({
       type: "UPDATE_FLOORPLANS",
       payload: this.floorplans,
     });
+    console.log("fragments core: ", this.fragments.core);
   }
 
   // --------------------------------------------------
@@ -232,6 +257,9 @@ export class BuildingScene {
   public async refreshModels(building: Building) {
     this.building = building;
 
+    this.fragmentsReady = false;
+    this.selected = null;
+
     if (!this.fragments) return;
 
     console.log("Refreshing building models");
@@ -243,28 +271,183 @@ export class BuildingScene {
 
     // Reload all models
     await this.loadAllModels();
-
+    this.fragmentsReady = true;
     this.fragments.core.update(true);
   }
 
-toggleFloorplan(active: boolean, floorplan?: Floorplan) {
-  if (!this.views || !this.floorplans.length) return;
+  toggleFloorplan(active: boolean, floorplan?: Floorplan) {
+    if (!this.views || !this.floorplans.length) return;
 
-  if (active && floorplan) {
-    // Hide grid (same as before)
-    const grids = this.components.get(OBC.Grids);
-    grids.list.forEach((grid) => (grid.visible = false));
+    if (active && floorplan) {
+      // Hide grid (same as before)
+      const grids = this.components.get(OBC.Grids);
+      grids.list.forEach((grid) => (grid.visible = false));
 
-    // Open the view
-    this.views.open(floorplan.id);
+      // Open the view
+      this.views.open(floorplan.id);
+    } else {
+      // Show grid again
+      const grids = this.components.get(OBC.Grids);
+      grids.list.forEach((grid) => (grid.visible = true));
 
-  } else {
-    // Show grid again
-    const grids = this.components.get(OBC.Grids);
-    grids.list.forEach((grid) => (grid.visible = true));
-
-    // Exit 2D mode
-    this.views.close();
+      // Exit 2D mode
+      this.views.close();
+    }
   }
-}
+
+  private setupEvents() {
+    this.sceneEvents = [
+      { name: "mousemove", action: this.preselect },
+      { name: "click", action: this.select },
+    ];
+
+    this.toggleEvents(true);
+  }
+
+  private toggleEvents(active: boolean) {
+    for (const event of this.sceneEvents) {
+      if (active) {
+        this.container.addEventListener(event.name, event.action);
+      } else {
+        this.container.removeEventListener(event.name, event.action);
+      }
+    }
+  }
+
+  private preselect = () => {
+    if (!this.fragmentsReady || this.disposed) return;
+    if (this.preselectRAF !== null) return;
+
+    this.preselectRAF = requestAnimationFrame(async () => {
+      this.preselectRAF = null;
+
+      const result = await this.caster.castRay();
+      if (!this.fragmentsReady || this.disposed) return;
+
+      // SAME ITEM → do nothing (prevents flicker)
+      if (
+        result &&
+        this.preselected &&
+        this.preselected.modelId === result.fragments.modelId &&
+        this.preselected.localId === result.localId
+      ) {
+        return;
+      }
+
+      // ALWAYS clear ONLY previous preselection
+      if (this.preselected) {
+        await this.fragments.resetHighlight({
+          [this.preselected.modelId]: new Set([this.preselected.localId]),
+        });
+        this.preselected = null;
+      }
+
+      // NO HIT → stop here
+      if (!result) {
+        await this.fragments.core.update();
+        return;
+      }
+
+      const modelId = result.fragments.modelId;
+      const localId = result.localId;
+
+      // DO NOT override selected item
+      if (
+        this.selected &&
+        this.selected.modelId === modelId &&
+        this.selected.localId === localId
+      ) {
+        return;
+      }
+
+      // Apply hover highlight
+      await this.fragments.highlight(
+        {
+          color: this.color, // pink hover
+          opacity: 0.3,
+          transparent: true,
+          renderedFaces: 1,
+        },
+        {
+          [modelId]: new Set([localId]),
+        },
+      );
+
+      this.preselected = { modelId, localId };
+
+      await this.fragments.core.update();
+    });
+  };
+
+  private select = async () => {
+    if (!this.fragmentsReady || this.disposed) return;
+
+    const result = await this.caster.castRay();
+
+    // Clear everything if clicking empty
+    if (!result) {
+      await this.fragments.resetHighlight();
+      this.selected = null;
+      this.preselected = null;
+
+      this.events.trigger({
+        type: "UPDATE_PROPERTIES",
+        payload: [],
+      });
+
+      return;
+    }
+
+    const modelId = result.fragments.modelId;
+    const localId = result.localId;
+
+    // FULL RESET (only place this is allowed)
+    await this.fragments.resetHighlight();
+
+    this.selected = { modelId, localId };
+    this.preselected = null;
+
+    // Apply selection highlight
+    await this.fragments.highlight(
+      {
+        color: this.color,
+        opacity: 0.6,
+        transparent: true,
+        renderedFaces: 1,
+      },
+      {
+        [modelId]: new Set([localId]),
+      },
+    );
+
+    await this.fragments.core.update(true);
+    // Get properties (correct API)
+    const model = this.fragments.list.get(modelId);
+    if (!model) return;
+
+    const [props] = await model.getItemsData([localId]);
+
+    if (!props) {
+      this.events.trigger({
+        type: "UPDATE_PROPERTIES",
+        payload: [],
+      });
+      return;
+    }
+
+    const formatted = Object.entries(props).map(([name, value]: any) => {
+      let finalValue = value;
+
+      if (!finalValue) finalValue = "Unknown";
+      if (finalValue?.value) finalValue = finalValue.value;
+      if (typeof finalValue === "number") finalValue = finalValue.toString();
+
+      return { name, value: finalValue };
+    });
+
+    this.events.trigger({
+      type: "UPDATE_PROPERTIES",
+      payload: formatted,
+    });
+  };
 }

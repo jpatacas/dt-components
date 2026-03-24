@@ -48,6 +48,11 @@ export interface Floorplan {
   id: string;
 }
 
+export interface Property {
+  name: string;
+  value: string;
+}
+
 /**
  * UI-safe layer config (used by LayerSelector)
  */
