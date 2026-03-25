@@ -1,4 +1,5 @@
 import * as OBC from "@thatopen/components";
+import * as OBF from "@thatopen/components-front";
 import type { Building, Floorplan } from "../../types";
 import workerUrl from "@thatopen/fragments/dist/Worker/worker.mjs?worker&url";
 import { localModelStore } from "../db/local-model-store";
@@ -19,13 +20,10 @@ export class BuildingScene {
 
   private sceneEvents: { name: string; action: any }[] = [];
 
-  private selected: { modelId: string; localId: number } | null = null;
-  private preselected: { modelId: string; localId: number } | null = null;
-
   private fragmentsReady = false;
   private preselectRAF: number | null = null;
 
-  private color = new THREE.Color("purple");
+  private highlighter!: OBF.Highlighter;
 
   constructor(
     private container: HTMLDivElement,
@@ -145,10 +143,31 @@ export class BuildingScene {
     await this.loadAllModels();
 
     this.fragmentsReady = true;
-    this.setupEvents();
+
+    this.highlighter = this.components.get(OBF.Highlighter);
+    this.highlighter.setup({
+      world: this.world,
+    });
+
+    // Define styles
+    this.highlighter.styles.set("hover", {
+      color: new THREE.Color(0xffc0cb), // pink
+      opacity: 0.3,
+      transparent: true,
+      renderedFaces: 1,
+    });
+
+    this.highlighter.styles.set("select", {
+      color: new THREE.Color("purple"),
+      opacity: 0.6,
+      transparent: true,
+      renderedFaces: 1,
+    });
 
     const raycasters = this.components.get(OBC.Raycasters);
     this.caster = raycasters.get(this.world);
+
+    this.setupEvents();
 
     //Views - for floorplans
 
@@ -163,7 +182,7 @@ export class BuildingScene {
     });
 
     await this.views.createFromIfcStoreys(); //storeyNames?: RegExp[]; use this to filter by some IFC modelling requirement (e.g. Level...)
-
+    //{ storeyNames: [/\bLevel\b/]}
     // Build floorplans array
     this.floorplans = [...this.views.list.keys()].map((name) => ({
       id: name,
@@ -175,7 +194,7 @@ export class BuildingScene {
       type: "UPDATE_FLOORPLANS",
       payload: this.floorplans,
     });
-    console.log("fragments core: ", this.fragments.core);
+    //console.log("fragments core: ", this.fragments.core);
   }
 
   // --------------------------------------------------
@@ -258,7 +277,6 @@ export class BuildingScene {
     this.building = building;
 
     this.fragmentsReady = false;
-    this.selected = null;
 
     if (!this.fragments) return;
 
@@ -297,7 +315,7 @@ export class BuildingScene {
 
   private setupEvents() {
     this.sceneEvents = [
-      { name: "mousemove", action: this.preselect },
+      { name: "pointermove", action: this.preselect },
       { name: "click", action: this.select },
     ];
 
@@ -314,69 +332,21 @@ export class BuildingScene {
     }
   }
 
-  private preselect = () => {
+  private preselect = async () => {
     if (!this.fragmentsReady || this.disposed) return;
-    if (this.preselectRAF !== null) return;
 
-    this.preselectRAF = requestAnimationFrame(async () => {
-      this.preselectRAF = null;
+    const result = await this.caster.castRay();
 
-      const result = await this.caster.castRay();
-      if (!this.fragmentsReady || this.disposed) return;
+    if (!result) {
+      this.highlighter.clear("hover");
+      return;
+    }
 
-      // SAME ITEM → do nothing (prevents flicker)
-      if (
-        result &&
-        this.preselected &&
-        this.preselected.modelId === result.fragments.modelId &&
-        this.preselected.localId === result.localId
-      ) {
-        return;
-      }
+    const modelIdMap = {
+      [result.fragments.modelId]: new Set([result.localId]),
+    };
 
-      // ALWAYS clear ONLY previous preselection
-      if (this.preselected) {
-        await this.fragments.resetHighlight({
-          [this.preselected.modelId]: new Set([this.preselected.localId]),
-        });
-        this.preselected = null;
-      }
-
-      // NO HIT → stop here
-      if (!result) {
-        await this.fragments.core.update();
-        return;
-      }
-
-      const modelId = result.fragments.modelId;
-      const localId = result.localId;
-
-      // DO NOT override selected item
-      if (
-        this.selected &&
-        this.selected.modelId === modelId &&
-        this.selected.localId === localId
-      ) {
-        return;
-      }
-
-      // Apply hover highlight
-      await this.fragments.highlight(
-        {
-          color: this.color, // pink hover
-          opacity: 0.3,
-          transparent: true,
-          renderedFaces: 1,
-        },
-        {
-          [modelId]: new Set([localId]),
-        },
-      );
-
-      this.preselected = { modelId, localId };
-
-      await this.fragments.core.update();
-    });
+    this.highlighter.highlight("hover", modelIdMap);
   };
 
   private select = async () => {
@@ -384,11 +354,9 @@ export class BuildingScene {
 
     const result = await this.caster.castRay();
 
-    // Clear everything if clicking empty
+    // Clicked empty space
     if (!result) {
-      await this.fragments.resetHighlight();
-      this.selected = null;
-      this.preselected = null;
+      this.highlighter.clear("select");
 
       this.events.trigger({
         type: "UPDATE_PROPERTIES",
@@ -401,27 +369,14 @@ export class BuildingScene {
     const modelId = result.fragments.modelId;
     const localId = result.localId;
 
-    // FULL RESET (only place this is allowed)
-    await this.fragments.resetHighlight();
+    const modelIdMap = {
+      [modelId]: new Set([localId]),
+    };
 
-    this.selected = { modelId, localId };
-    this.preselected = null;
+    // Apply selection
+    this.highlighter.highlight("select", modelIdMap);
 
-    // Apply selection highlight
-    await this.fragments.highlight(
-      {
-        color: this.color,
-        opacity: 0.6,
-        transparent: true,
-        renderedFaces: 1,
-      },
-      {
-        [modelId]: new Set([localId]),
-      },
-    );
-
-    await this.fragments.core.update(true);
-    // Get properties (correct API)
+    // ---- properties logic ----
     const model = this.fragments.list.get(modelId);
     if (!model) return;
 
