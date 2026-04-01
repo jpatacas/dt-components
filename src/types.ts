@@ -1,3 +1,5 @@
+import type { BuildingScene } from "./core/building/building-scene";
+
 export interface GisParameters {
   container: HTMLDivElement;
   accessToken: string;
@@ -87,4 +89,11 @@ export interface LayerDefinition extends LayerConfig {
    * Remove layer from map
    */
   remove: (map: mapboxgl.Map) => void;
+}
+
+export interface BuildingLayerDefinition extends LayerConfig {
+  fetch?: () => Promise<any>;
+
+  add: (scene: BuildingScene, data?: any) => Promise<void>;
+  remove: (scene: BuildingScene) => Promise<void>;
 }

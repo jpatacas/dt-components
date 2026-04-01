@@ -67,7 +67,7 @@ export function getLayers(state: any) {
         title: "Diagnostic",
         selection: "multiple",
         layers: [
-          { id: "temperature", label: "Temperature", icon: <ThermostatIcon /> },
+          { id: "building-temperature", label: "Temperature", icon: <ThermostatIcon /> },
           { id: "occupancy", label: "Occupancy", icon: <SensorsIcon /> },
           { id: "faults", label: "Fault detection", icon: <SensorsIcon /> },
           { id: "energyFlow", label: "Energy Flow", icon: <BoltIcon /> },
