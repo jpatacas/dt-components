@@ -91,7 +91,7 @@ export const BuildingViewer: FC = () => {
   const DrawerHeader = getDrawerHeader();
 
   return (
-    <Box sx={{ display: "flex" }}>
+    <Box sx={{ display: "flex", height: "100vh" }}>
       <CssBaseline />
 
       <NavBar width={width} open={sideOpen} onOpen={() => toggleDrawer(true)} />
@@ -106,7 +106,17 @@ export const BuildingViewer: FC = () => {
         setSelectedLayers={setSelectedLayers}
       />
 
-      <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
+      <Box
+        component="main"
+        sx={{
+          flexGrow: 1,
+          display: "flex",
+          flexDirection: "column",
+          height: "100%",
+          overflow: "hidden",
+          p: 0,
+        }}
+      >
         <DrawerHeader />
 
         <BuildingFrontMenu
@@ -114,8 +124,9 @@ export const BuildingViewer: FC = () => {
           open={frontOpen}
           mode={frontMenu}
         />
-
-        <BuildingViewport />
+        <Box sx={{ flexGrow: 1, position: "relative", minHeight: 0 }}>
+          <BuildingViewport />
+        </Box>
       </Box>
 
       <BottomDrawer
