@@ -48,6 +48,15 @@ export const BuildingViewer: FC = () => {
     setSelectedLayers(initialSelection);
   }, [state.dtMode]);
 
+  useEffect(() => {
+    const selected = Object.values(selectedLayers).flat().filter(Boolean);
+
+    dispatch({
+      type: "UPDATE_LAYERS_BUILDING",
+      payload: selected,
+    });
+  }, [selectedLayers]);
+
   const buildings: any[] = [];
 
   const districtKPIs = {

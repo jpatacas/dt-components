@@ -5,6 +5,7 @@ import workerUrl from "@thatopen/fragments/dist/Worker/worker.mjs?worker&url";
 import { localModelStore } from "../db/local-model-store";
 import type { Events } from "../../middleware/event-handler";
 import * as THREE from "three";
+import { buildingLayerRegistry } from "../layers/building/building-layer-registry";
 
 export class BuildingScene {
   private components: OBC.Components;
@@ -24,6 +25,12 @@ export class BuildingScene {
   private preselectRAF: number | null = null;
 
   private highlighter!: OBF.Highlighter;
+
+  private activeLayers = new Set<string>();
+
+  private allItemsCache = new Map<string, number[]>();
+
+  private hider!: OBC.Hider;
 
   constructor(
     private container: HTMLDivElement,
@@ -73,7 +80,7 @@ export class BuildingScene {
     this.world = worlds.create<
       OBC.SimpleScene,
       OBC.OrthoPerspectiveCamera,
-      OBC.SimpleRenderer
+      OBF.PostproductionRenderer
     >();
 
     this.world.scene = new OBC.SimpleScene(this.components);
@@ -84,6 +91,12 @@ export class BuildingScene {
       this.components,
       this.container,
     );
+
+    //floorplans visualisation not working with this
+    // this.world.renderer = new OBF.PostproductionRenderer(
+    //   this.components,
+    //   this.container,
+    // );
 
     this.world.camera = new OBC.OrthoPerspectiveCamera(this.components);
 
@@ -164,6 +177,28 @@ export class BuildingScene {
       renderedFaces: 1,
     });
 
+    //for building layers test
+    this.highlighter.styles.set("layer", {
+      color: new THREE.Color(0xff0000), // bright red
+      opacity: 1,
+      transparent: false,
+      renderedFaces: 1,
+    });
+
+    this.highlighter.styles.set("occupied", {
+      color: new THREE.Color(0xff0000),
+      opacity: 1,
+      transparent: false,
+      renderedFaces: 1,
+    });
+
+    this.highlighter.styles.set("free", {
+      color: new THREE.Color(0x00ff00),
+      opacity: 1,
+      transparent: false,
+      renderedFaces: 1,
+    });
+
     const raycasters = this.components.get(OBC.Raycasters);
     this.caster = raycasters.get(this.world);
 
@@ -195,6 +230,10 @@ export class BuildingScene {
       payload: this.floorplans,
     });
     //console.log("fragments core: ", this.fragments.core);
+
+    //Hider for building layers
+    this.hider = this.components.get(OBC.Hider);
+
   }
 
   // --------------------------------------------------
@@ -373,6 +412,7 @@ export class BuildingScene {
       [modelId]: new Set([localId]),
     };
 
+    console.log("Selected: ", modelIdMap)
     // Apply selection
     this.highlighter.highlight("select", modelIdMap);
 
@@ -405,4 +445,177 @@ export class BuildingScene {
       payload: formatted,
     });
   };
+
+  public async updateLayers(layerIds: string[]) {
+    const next = new Set(layerIds.filter(Boolean));
+
+    console.log("Selected layers:", layerIds);
+    console.log("Registry keys:", Object.keys(buildingLayerRegistry));
+
+    // REMOVE old
+    for (const id of this.activeLayers) {
+      if (!next.has(id)) {
+        const layer = buildingLayerRegistry[id];
+        if (layer) {
+          await layer.remove(this);
+        }
+      }
+    }
+
+    // ADD new
+    for (const id of next) {
+      if (!this.activeLayers.has(id)) {
+        const layer = buildingLayerRegistry[id];
+
+        if (!layer) {
+          console.warn(`Layer not registered: ${id}`);
+          continue;
+        }
+
+        let data;
+
+        if (layer.fetch) {
+          data = await layer.fetch();
+        }
+
+        await layer.add(this, data);
+      }
+    }
+
+    console.log("BUILDING ACTIVE LAYERS:", [...this.activeLayers]);
+
+    this.activeLayers = next;
+  }
+
+  private flattenModelIdMap(map: any): number[] {
+    return Object.values(map).flatMap((set: any) => [...set]);
+  }
+
+  private async getAllItems(model: any) {
+    if (!this.allItemsCache.has(model.modelId)) {
+      const ids = this.flattenModelIdMap(await model.getItems());
+      this.allItemsCache.set(model.modelId, ids);
+    }
+
+    return this.allItemsCache.get(model.modelId)!;
+  }
+
+  public async showOnlySpaces() {
+    const modelIdMap: OBC.ModelIdMap = {};
+
+    for (const [, model] of this.fragments.list) {
+      const items = await model.getItemsOfCategories([/\bIFCSPACE\b/]);
+
+      const spaceIds = Object.values(items).flat();
+
+      if (spaceIds.length === 0) continue;
+
+      modelIdMap[model.modelId] = new Set(spaceIds);
+    }
+
+    console.log("Isolating IFCSPACES:", modelIdMap);
+
+    await this.hider.isolate(modelIdMap);
+  }
+
+  public async showAll() {
+    await this.hider.set(true);
+  }
+
+  public async getSpacesByData(data: any[]) {
+    const result: Record<string, Set<number>> = {};
+
+    for (const [, model] of this.fragments.list) {
+      const spacesMap = await model.getItemsOfCategories([/\bIFCSPACE\b/]);
+
+      const spaceIds: number[] = Object.values(spacesMap).flatMap(
+        (set: any) => [...set],
+      );
+
+      // fetch ALL properties at once
+      const itemsData = await model.getItemsData(spaceIds);
+
+      for (let i = 0; i < spaceIds.length; i++) {
+        const id = spaceIds[i];
+        const props = itemsData[i];
+
+        const name = props?.Name?.value;
+
+        const match = data.find((d) => d.spaceName === name);
+
+        if (!match) continue;
+
+        if (!result[model.modelId]) {
+          result[model.modelId] = new Set();
+        }
+
+        result[model.modelId].add(id);
+      }
+    }
+
+    return result;
+  }
+
+  public async applyLayer(map: OBC.ModelIdMap) {
+    if (!map || Object.keys(map).length === 0) {
+      console.warn("Empty layer map");
+      return;
+    }
+
+    // 1. isolate (hide everything else)
+    await this.hider.isolate(map);
+
+    // this.highlighter.clear("hover");
+    // this.highlighter.clear("select");
+    this.highlighter.clear("layer");
+
+    // 2. color (using Highlighter custom style)
+    this.highlighter.highlightByID("layer", map);
+    console.log("Highlighting layer:", map);
+    console.log("Layer style:", this.highlighter.styles.get("layer"));
+  }
+
+  public async applyLayerWithColors(data: any[]) {
+    const baseMap = await this.getSpacesByData(data);
+
+    const dataMap = new Map(data.map((d) => [d.spaceName, d]));
+
+    const occupied: OBC.ModelIdMap = {};
+    const free: OBC.ModelIdMap = {};
+
+    for (const modelId in baseMap) {
+      for (const id of baseMap[modelId]) {
+        const model = this.fragments.list.get(modelId);
+        if (!model) continue;
+
+        const [props] = await model.getItemsData([id]);
+        const name = props?.Name?.value;
+
+        const item = dataMap.get(name);
+        if (!item) continue;
+
+        const target = item.status === "occupied" ? occupied : free;
+
+        if (!target[modelId]) target[modelId] = new Set();
+        target[modelId].add(id);
+      }
+    }
+
+    // 1. isolate
+    await this.hider.isolate(baseMap);
+
+    // 2. color (multi-color handled here)
+    this.highlighter.highlightByID("occupied", occupied);
+    this.highlighter.highlightByID("free", free);
+  }
+
+  public async resetLayer() {
+    console.log("Resetting layer");
+
+    // show everything
+    await this.hider.set(true);
+
+    // clear highlight?
+    //this.highlighter.clear("layer");
+  }
 }

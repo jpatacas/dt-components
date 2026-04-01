@@ -17,6 +17,9 @@ export const buildingHandler = {
     this.currentBuilding = building;
     this.viewer = new BuildingScene(container, building, events);
     await this.viewer.initialize();
+    
+    // reset layers when entering building
+    this.viewer.updateLayers([]);
   },
 
   async refreshModels(building: Building, events: Events) {
@@ -43,5 +46,12 @@ export const buildingHandler = {
     if (this.viewer) {
       this.viewer.toggleFloorplan(active, floorplan);
     }
+  },
+  updateLayers(layerIds: string[]) {
+    if (!this.viewer) return;
+
+    console.log("Building handler updating layers:", layerIds);
+
+    this.viewer.updateLayers(layerIds);
   },
 };
