@@ -49,6 +49,10 @@ export const executeCore = async (action: Action, events: Events) => {
     console.log("update layers - core handler");
     return mapHandler.updateLayers(action.payload);
   }
+  if (action.type === "UPDATE_LAYERS_BUILDING") {
+    console.log("update building layers - core handler");
+    return buildingHandler.updateLayers(action.payload);
+  }
   if (action.type === "TOGGLE_FLOORPLAN") {
     console.log("update from core - toggle floorplans");
     const { active, floorplan } = action.payload;
