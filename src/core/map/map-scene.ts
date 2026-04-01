@@ -4,7 +4,7 @@ import type { Building, GisParameters, LngLat } from "../../types";
 import type { User } from "firebase/auth";
 import { MapDatabase } from "./map-database";
 import type { Events } from "../../middleware/event-handler";
-import { layerRegistry } from "../layers/layer-registry";
+import { layerRegistry } from "../layers/map/layer-registry";
 
 export class MapScene {
   private map!: MAPBOX.Map;
@@ -15,7 +15,7 @@ export class MapScene {
 
   private database = new MapDatabase();
   //private unsubscribe?: () => void;
-  private mapLoaded = false;
+  //private mapLoaded = false;
 
   private ready!: Promise<void>;
   private resolveReady!: () => void;
@@ -58,7 +58,7 @@ export class MapScene {
     });
 
     this.map.on("load", () => {
-      this.mapLoaded = true;
+      //this.mapLoaded = true;
       this.setupBuildingSource();
       //this.setupSensorSource();
       this.setupInteractions();
@@ -255,6 +255,7 @@ export class MapScene {
       this.onBuildingSelected(building);
     });
 
+    //to do: this should check if its on the correct layer / generalise for all layers 
     this.map.on("click", (e) => {
       const features = this.map.queryRenderedFeatures(e.point, {
         layers: ["sensor-layer"],
@@ -278,27 +279,6 @@ export class MapScene {
     this.map.on("mouseleave", "user-buildings-layer", () => {
       this.map.getCanvas().style.cursor = "";
     });
-  }
-
-  // ----------------------------------
-  // GeoJSON Builder
-  // ----------------------------------
-
-  private getBuildingGeoJSON(): GeoJSON.FeatureCollection {
-    return {
-      type: "FeatureCollection",
-      features: this.buildings.map((b) => ({
-        type: "Feature",
-        geometry: {
-          type: "Point",
-          coordinates: [b.lng, b.lat],
-        },
-        properties: {
-          uid: b.uid,
-          userID: b.userID,
-        },
-      })),
-    };
   }
 
   // ----------------------------------
