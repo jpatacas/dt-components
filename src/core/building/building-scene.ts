@@ -179,23 +179,30 @@ export class BuildingScene {
 
     //for building layers test
     this.highlighter.styles.set("layer", {
-      color: new THREE.Color(0xff0000), // bright red
+      color: new THREE.Color(0x000000),
       opacity: 1,
-      transparent: false,
+      transparent: true,
+      renderedFaces: 1,
+    });
+
+    this.highlighter.styles.set("unknown", {
+      color: new THREE.Color(0xaaaaaa), // grey default
+      opacity: 0.1,
+      transparent: true,
       renderedFaces: 1,
     });
 
     this.highlighter.styles.set("occupied", {
       color: new THREE.Color(0xff0000),
-      opacity: 1,
+      opacity: 0.5,
       transparent: false,
       renderedFaces: 1,
     });
 
     this.highlighter.styles.set("free", {
       color: new THREE.Color(0x00ff00),
-      opacity: 1,
-      transparent: false,
+      opacity: 0.5,
+      transparent: true,
       renderedFaces: 1,
     });
 
@@ -233,7 +240,6 @@ export class BuildingScene {
 
     //Hider for building layers
     this.hider = this.components.get(OBC.Hider);
-
   }
 
   // --------------------------------------------------
@@ -412,7 +418,7 @@ export class BuildingScene {
       [modelId]: new Set([localId]),
     };
 
-    console.log("Selected: ", modelIdMap)
+    //console.log("Selected: ", modelIdMap);
     // Apply selection
     this.highlighter.highlight("select", modelIdMap);
 
@@ -575,6 +581,79 @@ export class BuildingScene {
     console.log("Layer style:", this.highlighter.styles.get("layer"));
   }
 
+  public async getAllSpaces(): Promise<OBC.ModelIdMap> {
+  const result: OBC.ModelIdMap = {};
+
+  for (const [, model] of this.fragments.list) {
+    const items = await model.getItemsOfCategories([/\bIFCSPACE\b/]);
+
+    const ids = Object.values(items).flat();
+
+    if (ids.length === 0) continue;
+
+    result[model.modelId] = new Set(ids);
+  }
+
+  return result;
+}
+
+// public async applyLayerWithColors2(data: any[]) {
+//   // get ALL spaces (not filtered)
+//   const allSpaces = await this.getAllSpaces();
+
+//   const dataMap = new Map(data.map((d) => [d.spaceName, d]));
+
+//   const occupied: OBC.ModelIdMap = {};
+//   const free: OBC.ModelIdMap = {};
+//   const unknown: OBC.ModelIdMap = {};
+
+//   for (const modelId in allSpaces) {
+//     const model = this.fragments.list.get(modelId);
+//     if (!model) continue;
+
+//     const ids = [...allSpaces[modelId]];
+
+//     // batch fetch (important for performance)
+//     const itemsData = await model.getItemsData(ids);
+
+//     for (let i = 0; i < ids.length; i++) {
+//       const id = ids[i];
+//       const props = itemsData[i];
+
+//       const name = props?.Name?.value;
+//       const item = dataMap.get(name);
+
+//       let target: OBC.ModelIdMap;
+
+//       if (!item) {
+//         target = unknown;
+//       } else if (item.status === "occupied") {
+//         target = occupied;
+//       } else if (item.status === "free") {
+//         target = free;
+//       } else {
+//         target = unknown;
+//       }
+
+//       if (!target[modelId]) target[modelId] = new Set();
+//       target[modelId].add(id);
+//     }
+//   }
+
+//   // isolate ALL spaces (not just matched ones)
+//   await this.hider.isolate(allSpaces);
+
+//   // clear previous
+//   this.highlighter.clear("occupied");
+//   this.highlighter.clear("free");
+//   this.highlighter.clear("unknown");
+
+//   // apply colors
+//   this.highlighter.highlightByID("occupied", occupied);
+//   this.highlighter.highlightByID("free", free);
+//   this.highlighter.highlightByID("unknown", unknown);
+// }
+
   public async applyLayerWithColors(data: any[]) {
     const baseMap = await this.getSpacesByData(data);
 
@@ -582,6 +661,7 @@ export class BuildingScene {
 
     const occupied: OBC.ModelIdMap = {};
     const free: OBC.ModelIdMap = {};
+    const unknown: OBC.ModelIdMap = {};
 
     for (const modelId in baseMap) {
       for (const id of baseMap[modelId]) {
@@ -594,10 +674,25 @@ export class BuildingScene {
         const item = dataMap.get(name);
         if (!item) continue;
 
-        const target = item.status === "occupied" ? occupied : free;
+        // const target = item.status === "occupied" ? occupied : free;
 
-        if (!target[modelId]) target[modelId] = new Set();
-        target[modelId].add(id);
+        // if (!target[modelId]) target[modelId] = new Set();
+        // target[modelId].add(id);
+
+              let target: OBC.ModelIdMap;
+
+      if (!item) {
+        target = unknown;
+      } else if (item.status === "occupied") {
+        target = occupied;
+      } else if (item.status === "free") {
+        target = free;
+      } else {
+        target = unknown;
+      }
+
+      if (!target[modelId]) target[modelId] = new Set();
+      target[modelId].add(id);
       }
     }
 
