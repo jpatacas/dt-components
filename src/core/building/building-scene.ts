@@ -654,6 +654,7 @@ export class BuildingScene {
 //   this.highlighter.highlightByID("unknown", unknown);
 // }
 
+// to do: generalise for other datasets (temperature etc)
   public async applyLayerWithColors(data: any[]) {
     const baseMap = await this.getSpacesByData(data);
 
