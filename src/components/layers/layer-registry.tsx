@@ -1,5 +1,6 @@
 import ApartmentIcon from "@mui/icons-material/Apartment";
-import SatelliteIcon from "@mui/icons-material/Satellite";
+//import SatelliteIcon from "@mui/icons-material/Satellite";
+import SpaceDashboardIcon from '@mui/icons-material/SpaceDashboard';
 import BoltIcon from "@mui/icons-material/Bolt";
 import SensorsIcon from "@mui/icons-material/Sensors";
 import AnalyticsIcon from "@mui/icons-material/Analytics";
@@ -55,9 +56,9 @@ export function getLayers(state: any) {
         title: "Descriptive",
         selection: "single",
         layers: [
-          { id: "buildings", label: "Structure", icon: <ApartmentIcon /> },
+          { id: "building", label: "Building", icon: <ApartmentIcon /> },
           // { id: "satellite", label: "Satellite", icon: <SatelliteIcon /> },
-          { id: "building-sensors", label: "Sensors", icon: <SensorsIcon /> },
+          { id: "spaces", label: "Spaces", icon: <SpaceDashboardIcon /> },
         ],
       },
     ];
