@@ -45,7 +45,7 @@ export const executeCore = async (action: Action, events: Events) => {
   if (action.type === "CLOSE_BUILDING") {
     return buildingHandler.remove();
   }
-  if (action.type === "UPDATE_LAYERS") {
+  if (action.type === "UPDATE_LAYERS_MAP") {
     console.log("update layers - core handler");
     return mapHandler.updateLayers(action.payload);
   }

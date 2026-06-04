@@ -54,7 +54,7 @@ export const MapViewer: FC = () => {
     const selected = Object.values(selectedLayers).flat().filter(Boolean);
 
     dispatch({
-      type: "UPDATE_LAYERS",
+      type: "UPDATE_LAYERS_MAP",
       payload: selected,
     });
   }, [selectedLayers]);

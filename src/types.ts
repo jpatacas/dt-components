@@ -74,7 +74,7 @@ export interface LayerConfig {
 /**
  * Full layer definition (used by MapScene / core)
  */
-export interface LayerDefinition extends LayerConfig {
+export interface MapLayerDefinition extends LayerConfig {
   /**
    * Optional data fetcher (API, Firebase, etc.)
    */

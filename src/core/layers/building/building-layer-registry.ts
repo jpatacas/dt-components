@@ -10,6 +10,7 @@ export const buildingLayerRegistry: Record<string, any> = {
         // { spaceName: "15", status: "occupied" },
 
         { spaceName: "6", status: "unknown" },
+        { spaceName: "1.042", status: "unknown" },
 
         { spaceName: "3", status: "unknown" },
         { spaceName: "4", status: "unknown" },
@@ -60,6 +61,7 @@ export const buildingLayerRegistry: Record<string, any> = {
       //const map = await scene.getSpacesByData(data);
 
       // pipeline
+      console.log("call applyLayerWithColors (occupancy filter)")
       await scene.applyLayerWithColors(data);
     },
 

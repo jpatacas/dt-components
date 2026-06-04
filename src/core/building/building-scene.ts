@@ -528,6 +528,7 @@ export class BuildingScene {
     await this.hider.set(true);
   }
 
+  //get spaces by name
   public async getSpacesByData(data: any[]) {
     const result: Record<string, Set<number>> = {};
 
