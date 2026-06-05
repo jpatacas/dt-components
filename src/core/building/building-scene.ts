@@ -32,6 +32,8 @@ export class BuildingScene {
 
   private hider!: OBC.Hider;
 
+  private roomLookup = new Map<string, { name: string; value: string }[]>();
+
   constructor(
     private container: HTMLDivElement,
     private building: Building,
@@ -240,6 +242,9 @@ export class BuildingScene {
 
     //Hider for building layers
     this.hider = this.components.get(OBC.Hider);
+
+    //room lookup for UO
+    await this.buildRoomLookup();
   }
 
   // --------------------------------------------------
@@ -427,6 +432,7 @@ export class BuildingScene {
     if (!model) return;
 
     const [props] = await model.getItemsData([localId]);
+    //console.log(props._category.value)
 
     if (!props) {
       this.events.trigger({
@@ -445,6 +451,17 @@ export class BuildingScene {
 
       return { name, value: finalValue };
     });
+
+    const roomNumber = props.Name?.value ?? props.Name;
+
+    const sensors = this.roomLookup.get(roomNumber) ?? [];
+
+    if (sensors.length > 0) {
+      formatted.push(
+        { name: "----- SENSOR DATA -----", value: "" },
+        ...sensors,
+      );
+    }
 
     this.events.trigger({
       type: "UPDATE_PROPERTIES",
@@ -583,79 +600,22 @@ export class BuildingScene {
   }
 
   public async getAllSpaces(): Promise<OBC.ModelIdMap> {
-  const result: OBC.ModelIdMap = {};
+    const result: OBC.ModelIdMap = {};
 
-  for (const [, model] of this.fragments.list) {
-    const items = await model.getItemsOfCategories([/\bIFCSPACE\b/]);
+    for (const [, model] of this.fragments.list) {
+      const items = await model.getItemsOfCategories([/\bIFCSPACE\b/]);
 
-    const ids = Object.values(items).flat();
+      const ids = Object.values(items).flat();
 
-    if (ids.length === 0) continue;
+      if (ids.length === 0) continue;
 
-    result[model.modelId] = new Set(ids);
+      result[model.modelId] = new Set(ids);
+    }
+
+    return result;
   }
 
-  return result;
-}
-
-// public async applyLayerWithColors2(data: any[]) {
-//   // get ALL spaces (not filtered)
-//   const allSpaces = await this.getAllSpaces();
-
-//   const dataMap = new Map(data.map((d) => [d.spaceName, d]));
-
-//   const occupied: OBC.ModelIdMap = {};
-//   const free: OBC.ModelIdMap = {};
-//   const unknown: OBC.ModelIdMap = {};
-
-//   for (const modelId in allSpaces) {
-//     const model = this.fragments.list.get(modelId);
-//     if (!model) continue;
-
-//     const ids = [...allSpaces[modelId]];
-
-//     // batch fetch (important for performance)
-//     const itemsData = await model.getItemsData(ids);
-
-//     for (let i = 0; i < ids.length; i++) {
-//       const id = ids[i];
-//       const props = itemsData[i];
-
-//       const name = props?.Name?.value;
-//       const item = dataMap.get(name);
-
-//       let target: OBC.ModelIdMap;
-
-//       if (!item) {
-//         target = unknown;
-//       } else if (item.status === "occupied") {
-//         target = occupied;
-//       } else if (item.status === "free") {
-//         target = free;
-//       } else {
-//         target = unknown;
-//       }
-
-//       if (!target[modelId]) target[modelId] = new Set();
-//       target[modelId].add(id);
-//     }
-//   }
-
-//   // isolate ALL spaces (not just matched ones)
-//   await this.hider.isolate(allSpaces);
-
-//   // clear previous
-//   this.highlighter.clear("occupied");
-//   this.highlighter.clear("free");
-//   this.highlighter.clear("unknown");
-
-//   // apply colors
-//   this.highlighter.highlightByID("occupied", occupied);
-//   this.highlighter.highlightByID("free", free);
-//   this.highlighter.highlightByID("unknown", unknown);
-// }
-
-// to do: generalise for other datasets (temperature etc)
+  // to do: generalise for other datasets (temperature etc)
   public async applyLayerWithColors(data: any[]) {
     const baseMap = await this.getSpacesByData(data);
 
@@ -681,20 +641,20 @@ export class BuildingScene {
         // if (!target[modelId]) target[modelId] = new Set();
         // target[modelId].add(id);
 
-              let target: OBC.ModelIdMap;
+        let target: OBC.ModelIdMap;
 
-      if (!item) {
-        target = unknown;
-      } else if (item.status === "occupied") {
-        target = occupied;
-      } else if (item.status === "free") {
-        target = free;
-      } else {
-        target = unknown;
-      }
+        if (!item) {
+          target = unknown;
+        } else if (item.status === "occupied") {
+          target = occupied;
+        } else if (item.status === "free") {
+          target = free;
+        } else {
+          target = unknown;
+        }
 
-      if (!target[modelId]) target[modelId] = new Set();
-      target[modelId].add(id);
+        if (!target[modelId]) target[modelId] = new Set();
+        target[modelId].add(id);
       }
     }
 
@@ -714,5 +674,39 @@ export class BuildingScene {
 
     // clear highlight?
     //this.highlighter.clear("layer");
+  }
+
+  // query Urban Observatory and build room lookup
+  private async buildRoomLookup() {
+    const response = await fetch(
+      "https://api.usb.urbanobservatory.ac.uk/api/v2.0a/sensors/entity?pageSize=1000",
+    );
+
+    const data = await response.json();
+
+    for (const entity of data.items ?? []) {
+      const roomNumber = entity.meta?.roomNumber;
+
+      if (!roomNumber) continue;
+
+      const sensors = [];
+
+      for (const feed of entity.feed ?? []) {
+        for (const ts of feed.timeseries ?? []) {
+          const value = ts.latest?.value;
+
+          if (value === undefined || value === null || value === "") {
+            continue;
+          }
+
+          sensors.push({
+            name: feed.metric,
+            value: String(value),
+          });
+        }
+      }
+
+      this.roomLookup.set(roomNumber, sensors);
+    }
   }
 }
