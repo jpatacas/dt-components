@@ -63,6 +63,15 @@ export class BuildingScene {
       },
     );
   }
+
+  private shouldPreserveLayerStyles(props: any) {
+    const isSpace =
+      props?.type === "IFCSPACE" || props?._category?.value === "IFCSPACE";
+
+    const hasActiveLayers = this.activeLayers.size > 0;
+
+    return isSpace && hasActiveLayers;
+  }
   // --------------------------------------------------
   // PUBLIC API
   // --------------------------------------------------
@@ -472,7 +481,19 @@ export class BuildingScene {
       [result.fragments.modelId]: new Set([result.localId]),
     };
 
-    this.highlighter.highlight("hover", modelIdMap);
+    //this.highlighter.highlight("hover", modelIdMap);
+
+    const model = this.fragments.list.get(result.fragments.modelId);
+
+    if (!model) return;
+
+    const [props] = await model.getItemsData([result.localId]);
+
+    if (this.shouldPreserveLayerStyles(props)) {
+      this.highlighter.clear("hover");
+    } else {
+      this.highlighter.highlight("hover", modelIdMap);
+    }
   };
 
   private select = async () => {
