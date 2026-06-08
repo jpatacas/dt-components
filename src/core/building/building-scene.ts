@@ -34,6 +34,8 @@ export class BuildingScene {
 
   private roomLookup = new Map<string, { name: string; value: string }[]>();
 
+  private layerCategories = new Map<string, Set<string>>();
+
   constructor(
     private container: HTMLDivElement,
     private building: Building,
@@ -43,6 +45,24 @@ export class BuildingScene {
     this.components = new OBC.Components();
   }
 
+  public getSensorLayer(metric: string, mapper: (value: string) => string) {
+    return Array.from(this.roomLookup.entries()).flatMap(
+      ([spaceName, sensors]) => {
+        const sensor = sensors.find((s) =>
+          s.name.toLowerCase().includes(metric.toLowerCase()),
+        );
+
+        if (!sensor) return [];
+
+        return [
+          {
+            spaceName,
+            category: mapper(sensor.value),
+          },
+        ];
+      },
+    );
+  }
   // --------------------------------------------------
   // PUBLIC API
   // --------------------------------------------------
@@ -203,6 +223,62 @@ export class BuildingScene {
 
     this.highlighter.styles.set("free", {
       color: new THREE.Color(0x00ff00),
+      opacity: 0.5,
+      transparent: true,
+      renderedFaces: 1,
+    });
+
+    this.highlighter.styles.set("hot", {
+      color: new THREE.Color("#ff8800"),
+      opacity: 0.5,
+      transparent: true,
+      renderedFaces: 1,
+    });
+
+    this.highlighter.styles.set("comfortable", {
+      color: new THREE.Color("#44ff44"),
+      opacity: 0.5,
+      transparent: true,
+      renderedFaces: 1,
+    });
+
+    this.highlighter.styles.set("cold", {
+      color: new THREE.Color("#4488ff"),
+      opacity: 0.5,
+      transparent: true,
+      renderedFaces: 1,
+    });
+
+    this.highlighter.styles.set("dry", {
+      color: new THREE.Color("#f5deb3"),
+      opacity: 0.5,
+      transparent: true,
+      renderedFaces: 1,
+    });
+
+    this.highlighter.styles.set("humid", {
+      color: new THREE.Color("#4169e1"),
+      opacity: 0.5,
+      transparent: true,
+      renderedFaces: 1,
+    });
+
+    this.highlighter.styles.set("good", {
+      color: new THREE.Color("#44ff44"),
+      opacity: 0.5,
+      transparent: true,
+      renderedFaces: 1,
+    });
+
+    this.highlighter.styles.set("moderate", {
+      color: new THREE.Color("#ffaa00"),
+      opacity: 0.5,
+      transparent: true,
+      renderedFaces: 1,
+    });
+
+    this.highlighter.styles.set("poor", {
+      color: new THREE.Color("#ff4444"),
       opacity: 0.5,
       transparent: true,
       renderedFaces: 1,
@@ -498,7 +574,7 @@ export class BuildingScene {
         let data;
 
         if (layer.fetch) {
-          data = await layer.fetch();
+          data = await layer.fetch(this);
         }
 
         await layer.add(this, data);
@@ -615,55 +691,72 @@ export class BuildingScene {
     return result;
   }
 
-  // to do: generalise for other datasets (temperature etc)
-  public async applyLayerWithColors(data: any[]) {
+  public async applyLayerWithColors(
+    layerId: string,
+    data: {
+      spaceName: string;
+      category: string;
+    }[],
+  ) {
+    if (!data.length) {
+      console.warn(`No data supplied for layer '${layerId}'`);
+      return;
+    }
+
     const baseMap = await this.getSpacesByData(data);
 
-    const dataMap = new Map(data.map((d) => [d.spaceName, d]));
+    const dataMap = new Map(data.map((d) => [d.spaceName.trim(), d.category]));
 
-    const occupied: OBC.ModelIdMap = {};
-    const free: OBC.ModelIdMap = {};
-    const unknown: OBC.ModelIdMap = {};
+    const groups = new Map<string, OBC.ModelIdMap>();
+
+    const categories = new Set<string>();
 
     for (const modelId in baseMap) {
+      const model = this.fragments.list.get(modelId);
+
+      if (!model) continue;
+
       for (const id of baseMap[modelId]) {
-        const model = this.fragments.list.get(modelId);
-        if (!model) continue;
-
         const [props] = await model.getItemsData([id]);
-        const name = props?.Name?.value;
 
-        const item = dataMap.get(name);
-        if (!item) continue;
+        const name = props?.Name?.value?.trim();
 
-        // const target = item.status === "occupied" ? occupied : free;
+        if (!name) continue;
 
-        // if (!target[modelId]) target[modelId] = new Set();
-        // target[modelId].add(id);
+        const category = dataMap.get(name);
 
-        let target: OBC.ModelIdMap;
+        if (!category) continue;
 
-        if (!item) {
-          target = unknown;
-        } else if (item.status === "occupied") {
-          target = occupied;
-        } else if (item.status === "free") {
-          target = free;
-        } else {
-          target = unknown;
+        categories.add(category);
+
+        if (!groups.has(category)) {
+          groups.set(category, {});
         }
 
-        if (!target[modelId]) target[modelId] = new Set();
+        const target = groups.get(category)!;
+
+        if (!target[modelId]) {
+          target[modelId] = new Set();
+        }
+
         target[modelId].add(id);
       }
     }
 
-    // 1. isolate
-    await this.hider.isolate(baseMap);
+    // Remember which highlight styles
+    // belong to this layer
+    this.layerCategories.set(layerId, categories);
 
-    // 2. color (multi-color handled here)
-    this.highlighter.highlightByID("occupied", occupied);
-    this.highlighter.highlightByID("free", free);
+    // Isolate only the spaces that belong
+    // to this dataset
+    //await this.hider.isolate(baseMap);
+
+    // Apply highlighting by category
+    for (const [category, map] of groups) {
+      console.log(`Applying '${category}'`, map);
+
+      this.highlighter.highlightByID(category, map);
+    }
   }
 
   public async resetLayer() {
@@ -674,6 +767,18 @@ export class BuildingScene {
 
     // clear highlight?
     //this.highlighter.clear("layer");
+  }
+
+  public clearLayer(layerId: string) {
+    const categories = this.layerCategories.get(layerId);
+
+    if (!categories) return;
+
+    for (const category of categories) {
+      this.highlighter.clear(category);
+    }
+
+    this.layerCategories.delete(layerId);
   }
 
   // query Urban Observatory and build room lookup

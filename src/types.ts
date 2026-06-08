@@ -92,7 +92,8 @@ export interface MapLayerDefinition extends LayerConfig {
 }
 
 export interface BuildingLayerDefinition extends LayerConfig {
-  fetch?: () => Promise<any>;
+  //fetch?: () => Promise<any>;
+  fetch?: (scene: BuildingScene) => Promise<any>;
 
   add: (scene: BuildingScene, data?: any) => Promise<void>;
   remove: (scene: BuildingScene) => Promise<void>;
