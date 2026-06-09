@@ -330,6 +330,7 @@ export class BuildingScene {
 
     //room lookup for UO
     await this.buildRoomLookup();
+    console.log(this.roomLookup);
   }
 
   // --------------------------------------------------
@@ -828,11 +829,22 @@ export class BuildingScene {
           sensors.push({
             name: feed.metric,
             value: String(value),
+            timeseriesId: ts.timeseriesId,
           });
         }
       }
 
       this.roomLookup.set(roomNumber, sensors);
     }
+  }
+
+  public async getSensorHistory(timeseriesId: string) {
+    const response = await fetch(
+      `https://api.usb.urbanobservatory.ac.uk/api/v2.0a/sensors/timeseries/${timeseriesId}/historic`,
+    );
+
+    const data = await response.json();
+
+    return data.timeseries ?? [];
   }
 }
