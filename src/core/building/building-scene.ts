@@ -557,7 +557,11 @@ export class BuildingScene {
     if (sensors.length > 0) {
       formatted.push(
         { name: "----- SENSOR DATA -----", value: "" },
-        ...sensors,
+        //...sensors,
+        ...sensors.map((sensor) => ({
+          ...sensor,
+          type: "sensor",
+        })),
       );
     }
 
@@ -830,6 +834,7 @@ export class BuildingScene {
             name: feed.metric,
             value: String(value),
             timeseriesId: ts.timeseriesId,
+            unit: ts.unit?.name,
           });
         }
       }
@@ -845,6 +850,31 @@ export class BuildingScene {
 
     const data = await response.json();
 
-    return data.timeseries ?? [];
+    //return data.timeseries ?? [];
+
+    return data.historic.values;
   }
+
+  public async loadSensorHistory(
+  sensor: {
+    name: string;
+    timeseriesId: string;
+    unit?: string;
+  }
+) {
+
+  const history =
+    await this.getSensorHistory(
+      sensor.timeseriesId
+    );
+
+  this.events.trigger({
+    type: "UPDATE_SENSOR_HISTORY",
+    payload: {
+      sensor,
+      history,
+    },
+  });
+
+}
 }
