@@ -58,4 +58,7 @@ export const executeCore = async (action: Action, events: Events) => {
     const { active, floorplan } = action.payload;
     return buildingHandler.toggleFloorplan(active, floorplan);
   }
+  if (action.type === "SELECT_SENSOR") {
+    return buildingHandler.selectSensor(action.payload);
+  }
 };

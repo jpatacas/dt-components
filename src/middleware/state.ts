@@ -2,13 +2,21 @@ import { type User } from "firebase/auth";
 import type { Building, Floorplan, Property } from "../types";
 
 export interface State {
-    user: User | null;
-    building : Building | null;
-    dtMode: string; //or string?
-    sensors: Sensor[];
-    map?: any;
-    floorplans: Floorplan[];
-    properties: Property[];
+  sensorHistory: any;
+  user: User | null;
+  building: Building | null;
+  dtMode: string; //or string?
+  sensors: Sensor[];
+  map?: any;
+  floorplans: Floorplan[];
+  properties: Property[];
+
+  selectedSensor?: {
+    name: string;
+    timeseriesId: string;
+    unit?: string;
+  };
+
 }
 
 export interface Sensor {
@@ -19,10 +27,11 @@ export interface Sensor {
 }
 
 export const initialState: State = {
-    user: null,
-    building: null,
-    dtMode: "descriptive",
-    sensors: [],
-    floorplans: [],
-    properties: [],
-}
+  user: null,
+  building: null,
+  dtMode: "descriptive",
+  sensors: [],
+  floorplans: [],
+  properties: [],
+  sensorHistory: []
+};

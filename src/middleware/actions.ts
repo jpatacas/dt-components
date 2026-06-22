@@ -16,7 +16,9 @@ export const ActionList = ["LOGIN",
 "UPDATE_LAYERS_BUILDING",
 "TOGGLE_FLOORPLAN",
 "UPDATE_FLOORPLANS",
-"UPDATE_PROPERTIES"] as const;
+"UPDATE_PROPERTIES",
+"SELECT_SENSOR",
+"UPDATE_SENSOR_HISTORY"] as const;
 
 export type ActionType = typeof ActionList[number]
 
