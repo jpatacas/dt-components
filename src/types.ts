@@ -53,6 +53,9 @@ export interface Floorplan {
 export interface Property {
   name: string;
   value: string;
+  type?: any;
+  unit?: any;
+  timeseriesId? : any;
 }
 
 /**
