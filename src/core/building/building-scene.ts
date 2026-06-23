@@ -36,6 +36,8 @@ export class BuildingScene {
 
   private layerCategories = new Map<string, Set<string>>();
 
+  private selectedRoom?: string;
+
   constructor(
     private container: HTMLDivElement,
     private building: Building,
@@ -511,6 +513,12 @@ export class BuildingScene {
         payload: [],
       });
 
+      this.events.trigger({
+        type: "CLEAR_SENSOR_HISTORY",
+      });
+
+      this.selectedRoom = undefined;
+
       return;
     }
 
@@ -551,6 +559,14 @@ export class BuildingScene {
     });
 
     const roomNumber = props.Name?.value ?? props.Name;
+
+    if (roomNumber !== this.selectedRoom) {
+      this.events.trigger({
+        type: "CLEAR_SENSOR_HISTORY",
+      });
+
+      this.selectedRoom = roomNumber;
+    }
 
     const sensors = this.roomLookup.get(roomNumber) ?? [];
 
@@ -855,26 +871,19 @@ export class BuildingScene {
     return data.historic.values;
   }
 
-  public async loadSensorHistory(
-  sensor: {
+  public async loadSensorHistory(sensor: {
     name: string;
     timeseriesId: string;
     unit?: string;
+  }) {
+    const history = await this.getSensorHistory(sensor.timeseriesId);
+
+    this.events.trigger({
+      type: "UPDATE_SENSOR_HISTORY",
+      payload: {
+        sensor,
+        history,
+      },
+    });
   }
-) {
-
-  const history =
-    await this.getSensorHistory(
-      sensor.timeseriesId
-    );
-
-  this.events.trigger({
-    type: "UPDATE_SENSOR_HISTORY",
-    payload: {
-      sensor,
-      history,
-    },
-  });
-
-}
 }

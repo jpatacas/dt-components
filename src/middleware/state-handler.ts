@@ -39,11 +39,18 @@ export const reducer = (state: State, action: Action) => {
     };
   }
   if (action.type === "UPDATE_SENSOR_HISTORY") {
-   console.log(state);
+    console.log(state);
     return {
       ...state,
       sensorHistory: action.payload.history,
       selectedSensor: action.payload.sensor,
+    };
+  }
+  if (action.type === "CLEAR_SENSOR_HISTORY") {
+    return {
+      ...state,
+      selectedSensor: null,
+      sensorHistory: [],
     };
   }
   return { ...state };
