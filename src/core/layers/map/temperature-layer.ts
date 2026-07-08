@@ -1,3 +1,5 @@
+import mapboxgl from "mapbox-gl";
+
 export const temperatureLayer = {
   id: "temperature",
   label: "Temperature",
@@ -54,7 +56,7 @@ export const temperatureLayer = {
         const lng = s.Sensor_Centroid_Longitude;
         const lat = s.Sensor_Centroid_Latitude;
         const value = s.value;
-        console.log(value)
+        console.log(value);
 
         if (!lng || !lat || value == null) return null;
 
@@ -84,6 +86,7 @@ export const temperatureLayer = {
       data: geojson,
     });
 
+    // HEATMAP (smoother + wider)
     map.addLayer({
       id: "temperature-heatmap",
       type: "heatmap",
@@ -95,12 +98,26 @@ export const temperatureLayer = {
           ["linear"],
           ["get", "value"],
           0,
-          0,
-          100,
+          0.2,
+          5,
+          0.5,
+          10,
+          0.75,
+          17,
           1,
         ],
 
-        "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 0, 1, 15, 4],
+        "heatmap-intensity": [
+          "interpolate",
+          ["linear"],
+          ["zoom"],
+          0,
+          1,
+          10,
+          2,
+          15,
+          5,
+        ],
 
         "heatmap-color": [
           "interpolate",
@@ -109,29 +126,92 @@ export const temperatureLayer = {
           0,
           "rgba(0,0,255,0)",
           0.2,
-          "blue",
+          "#2c2eb6",
           0.4,
-          "cyan",
+          "#2c58b6",
           0.6,
-          "lime",
+          "#2c7bb6",
           0.8,
-          "yellow",
+          "#abd9e9",
           1,
-          "red",
+          "#ffffbf",
         ],
 
-        "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 0, 50, 15, 40],
+        "heatmap-radius": [
+          "interpolate",
+          ["linear"],
+          ["zoom"],
+          0,
+          100,
+          10,
+          120,
+          15,
+          160,
+        ],
 
-        "heatmap-opacity": 0.8,
+        "heatmap-opacity": 0.85,
       },
     });
-    map.flyTo({
-      center: features[0]?.geometry.coordinates,
-      zoom: 12,
+
+    // CLICKABLE SENSOR POINTS
+    map.addLayer({
+      id: "temperature-points",
+      type: "circle",
+      source: "temperature",
+      paint: {
+        "circle-radius": ["interpolate", ["linear"], ["zoom"], 0, 6, 15, 10],
+        "circle-color": [
+          "interpolate",
+          ["linear"],
+          ["get", "value"],
+          10,
+          "#2c7bb6",
+          17,
+          "#ffffbf",
+          25,
+          "#d7191c",
+        ],
+        "circle-stroke-width": 1,
+        "circle-stroke-color": "#000",
+        "circle-opacity": 0.95,
+      },
     });
+
+    // CLICK INTERACTION
+    map.on("click", "temperature-points", (e) => {
+      const feature = e.features?.[0];
+      if (!feature) return;
+
+      const value = feature.properties?.value;
+
+      new mapboxgl.Popup()
+        .setLngLat(feature.geometry.coordinates as [number, number])
+        .setHTML(`<strong>Temperature:</strong> ${value.toFixed(1)}°C`)
+        .addTo(map);
+    });
+
+    map.on("mouseenter", "temperature-points", () => {
+      map.getCanvas().style.cursor = "pointer";
+    });
+
+    map.on("mouseleave", "temperature-points", () => {
+      map.getCanvas().style.cursor = "";
+    });
+
+    // FLY TO
+    if (features.length > 0) {
+      map.flyTo({
+        center: features[0].geometry.coordinates,
+        zoom: 13,
+        speed: 0.8,
+      });
+    }
   },
 
   remove: (map: mapboxgl.Map) => {
+    if (map.getLayer("temperature-points")) {
+      map.removeLayer("temperature-points");
+    }
     if (map.getLayer("temperature-heatmap")) {
       map.removeLayer("temperature-heatmap");
     }

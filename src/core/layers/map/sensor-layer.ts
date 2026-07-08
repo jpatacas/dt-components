@@ -1,5 +1,5 @@
 //import * as MAPBOX from "mapbox-gl";
-import type { LayerDefinition } from "../../../types";
+//import type { LayerDefinition } from "../../../types";
 
 const API = "https://corsproxy.io/?https://api.v2.urbanobservatory.ac.uk";
 

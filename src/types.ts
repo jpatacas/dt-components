@@ -53,6 +53,9 @@ export interface Floorplan {
 export interface Property {
   name: string;
   value: string;
+  type?: any;
+  unit?: any;
+  timeseriesId? : any;
 }
 
 /**
@@ -74,7 +77,7 @@ export interface LayerConfig {
 /**
  * Full layer definition (used by MapScene / core)
  */
-export interface LayerDefinition extends LayerConfig {
+export interface MapLayerDefinition extends LayerConfig {
   /**
    * Optional data fetcher (API, Firebase, etc.)
    */
@@ -92,7 +95,8 @@ export interface LayerDefinition extends LayerConfig {
 }
 
 export interface BuildingLayerDefinition extends LayerConfig {
-  fetch?: () => Promise<any>;
+  //fetch?: () => Promise<any>;
+  fetch?: (scene: BuildingScene) => Promise<any>;
 
   add: (scene: BuildingScene, data?: any) => Promise<void>;
   remove: (scene: BuildingScene) => Promise<void>;

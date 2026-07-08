@@ -3,6 +3,7 @@ import { useAppContext } from "../../middleware/context-provider";
 import { AppBar, Box, Button, Card, CardContent, Tab, Tabs, TextField, Toolbar, Typography } from "@mui/material";
 import { Navigate } from "react-router-dom";
 //import { NavBar } from "../navbar/navbar";
+import "./user-styles.css"
 
 export const LoginForm: FC = () => {
   const [state, dispatch] = useAppContext(); //state and dispatch - need both?
@@ -27,6 +28,7 @@ export const LoginForm: FC = () => {
 
   return (
     <>
+    
     {/* <NavBar open={false} onOpen={() => {}} width={100} /> */}
         {/* <Button onClick={onLogin}>Log in</Button> */}
 
@@ -43,7 +45,7 @@ export const LoginForm: FC = () => {
             <Card sx={{ maxWidth: 400, margin: "0 auto", marginTop: 20 }}>
       <CardContent sx={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
 
-
+               <img className="landing-logo" alt="wilson logo" src="WILSON_DarkBlue-Logo.png" />
         <Tabs value={activeTab} onChange={handleTabChange} centered>
           <Tab label="Login" />
           <Tab label="Sign Up" />
@@ -69,16 +71,17 @@ export const LoginForm: FC = () => {
               // Add necessary props and event handlers for password input
             />
             <Box sx={{ width: "100%", marginTop: 2}}>
+
             <Button variant="contained" color="primary" onClick={onLogin} fullWidth>
               Login
             </Button>
             </Box>
 
-            <Box sx={{ width: "100%", marginTop: 2}}>
+            {/* <Box sx={{ width: "100%", marginTop: 2}}>
             <Button variant="contained" color="secondary" onClick={onLogin} fullWidth>
               Login with Google
             </Button>
-            </Box>
+            </Box> */}
           </>
         )}
 

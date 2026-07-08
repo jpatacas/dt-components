@@ -1,9 +1,11 @@
 import ApartmentIcon from "@mui/icons-material/Apartment";
-import SatelliteIcon from "@mui/icons-material/Satellite";
+//import SatelliteIcon from "@mui/icons-material/Satellite";
+import SpaceDashboardIcon from "@mui/icons-material/SpaceDashboard";
 import BoltIcon from "@mui/icons-material/Bolt";
 import SensorsIcon from "@mui/icons-material/Sensors";
 import AnalyticsIcon from "@mui/icons-material/Analytics";
 import ThermostatIcon from "@mui/icons-material/Thermostat";
+import WaterDropIcon from "@mui/icons-material/WaterDrop";
 
 export function getLayers(state: any) {
   const mode = state.dtMode;
@@ -35,13 +37,18 @@ export function getLayers(state: any) {
       });
     }
 
-    if (mode === "performance") { // /sensors/data/json?last_n_days=1
+    if (mode === "performance") {
+      // /sensors/data/json?last_n_days=1
       groups.push({
         title: "Performance",
         selection: "single",
         layers: [
           { id: "aqi", label: "Air Quality Index", icon: <AnalyticsIcon /> },
-          { id: "heatisland", label: "Heat Island intensity", icon: <AnalyticsIcon /> },
+          {
+            id: "heatisland",
+            label: "Heat Island intensity",
+            icon: <AnalyticsIcon />,
+          },
         ],
       });
     }
@@ -55,9 +62,9 @@ export function getLayers(state: any) {
         title: "Descriptive",
         selection: "single",
         layers: [
-          { id: "buildings", label: "Structure", icon: <ApartmentIcon /> },
+          { id: "building", label: "Building", icon: <ApartmentIcon /> },
           // { id: "satellite", label: "Satellite", icon: <SatelliteIcon /> },
-          { id: "building-sensors", label: "Sensors", icon: <SensorsIcon /> },
+          { id: "spaces", label: "Spaces", icon: <SpaceDashboardIcon /> },
         ],
       },
     ];
@@ -67,10 +74,14 @@ export function getLayers(state: any) {
         title: "Diagnostic",
         selection: "multiple",
         layers: [
-          { id: "building-temperature", label: "Temperature", icon: <ThermostatIcon /> },
+          {
+            id: "building-temperature",
+            label: "Temperature",
+            icon: <ThermostatIcon />,
+          },
+          { id: "humidity", label: "Humidity", icon: <WaterDropIcon /> },
+          { id: "co2", label: "CO2", icon: <SensorsIcon /> },
           { id: "occupancy", label: "Occupancy", icon: <SensorsIcon /> },
-          { id: "faults", label: "Fault detection", icon: <SensorsIcon /> },
-          { id: "energyFlow", label: "Energy Flow", icon: <BoltIcon /> },
         ],
       });
     }

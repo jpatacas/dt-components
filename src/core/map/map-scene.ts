@@ -4,7 +4,7 @@ import type { Building, GisParameters, LngLat } from "../../types";
 import type { User } from "firebase/auth";
 import { MapDatabase } from "./map-database";
 import type { Events } from "../../middleware/event-handler";
-import { layerRegistry } from "../layers/map/layer-registry";
+import { mapLayerRegistry } from "../layers/map/map-layer-registry";
 
 export class MapScene {
   private map!: MAPBOX.Map;
@@ -217,7 +217,7 @@ export class MapScene {
   }
 
   private updateBuildingLayer() {
-    const layer = layerRegistry["buildings"]; //"user-buildings"?
+    const layer = mapLayerRegistry["buildings"]; //"user-buildings"?
 
     if (!layer) return;
 
@@ -318,12 +318,12 @@ export class MapScene {
     const next = new Set(layerIds.filter(Boolean)); //  remove undefined
 
     console.log("Selected layers:", layerIds);
-    console.log("Registry keys:", Object.keys(layerRegistry));
+    console.log("Registry keys:", Object.keys(mapLayerRegistry));
 
     // REMOVE old
     for (const id of this.activeLayers) {
       if (!next.has(id)) {
-        const layer = layerRegistry[id];
+        const layer = mapLayerRegistry[id];
         if (layer) {
           layer.remove(this.map);
         }
@@ -333,7 +333,7 @@ export class MapScene {
     // ADD new
     for (const id of next) {
       if (!this.activeLayers.has(id)) {
-        const layer = layerRegistry[id];
+        const layer = mapLayerRegistry[id];
 
         if (!layer) {
           console.warn(`Layer not registered: ${id}`);

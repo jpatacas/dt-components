@@ -1,3 +1,5 @@
+import mapboxgl from "mapbox-gl";
+
 export const humidityLayer = {
   id: "humidity",
   label: "Humidity",
@@ -83,59 +85,98 @@ export const humidityLayer = {
       data: geojson,
     });
 
-    map.addLayer({
+        map.addLayer({
       id: "humidity-heatmap",
       type: "heatmap",
       source: "humidity",
-      maxzoom: 15,
       paint: {
         "heatmap-weight": [
           "interpolate",
           ["linear"],
           ["get", "value"],
-          0,
-          0,
-          100,
-          1,
+          40, 0,
+          65, 0.5,
+          90, 1,
         ],
 
-        "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 0, 1, 15, 4],
+        "heatmap-intensity": [
+          "interpolate",
+          ["linear"],
+          ["zoom"],
+          0, 1,
+          15, 5,
+        ],
 
         "heatmap-color": [
           "interpolate",
           ["linear"],
           ["heatmap-density"],
-          0,
-          "rgba(0,0,255,0)",
-          0.2,
-          "blue",
-          0.4,
-          "cyan",
-          0.6,
-          "lime",
-          0.8,
-          "yellow",
-          1,
-          "red",
+          0, "rgba(0,0,255,0)",
+          0.2, "#4575b4",
+          0.4, "#91bfdb",
+          0.6, "#e0f3f8",
+          0.8, "#fee090",
+          1, "#c227d7",
         ],
 
-        "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 0, 5, 15, 40],
-
-        "heatmap-opacity": 0.8,
+        "heatmap-radius": [
+          "interpolate",
+          ["linear"],
+          ["zoom"],
+          0, 100,
+          10, 120,
+          15, 60,
+        ],
       },
     });
-    map.flyTo({
-      center: features[0]?.geometry.coordinates,
-      zoom: 12,
+
+    map.addLayer({
+      id: "humidity-points",
+      type: "circle",
+      source: "humidity",
+      paint: {
+        "circle-radius": [
+          "interpolate",
+          ["linear"],
+          ["zoom"],
+          0, 6,
+          15, 10,
+        ],
+        "circle-color": [
+          "interpolate",
+          ["linear"],
+          ["get", "value"],
+          40, "#4575b4",
+          65, "#e0f3f8",
+          90, "#d727d7",
+        ],
+        "circle-stroke-width": 1,
+        "circle-stroke-color": "#000",
+      },
     });
+
+    map.on("click", "humidity-points", (e) => {
+      const f = e.features?.[0];
+      if (!f) return;
+
+      new mapboxgl.Popup()
+        .setLngLat(f.geometry.coordinates as [number, number])
+        .setHTML(`<strong>Humidity:</strong> ${f.properties?.value.toFixed(1)}%`)
+        .addTo(map);
+    });
+
+    // flyTo
+    if (features.length > 0) {
+      map.flyTo({
+        center: features[0].geometry.coordinates,
+        zoom: 13,
+      });
+    }
   },
 
   remove: (map: mapboxgl.Map) => {
-    if (map.getLayer("humidity-heatmap")) {
-      map.removeLayer("humidity-heatmap");
-    }
-    if (map.getSource("humidity")) {
-      map.removeSource("humidity");
-    }
+    if (map.getLayer("humidity-points")) map.removeLayer("humidity-points");
+    if (map.getLayer("humidity-heatmap")) map.removeLayer("humidity-heatmap");
+    if (map.getSource("humidity")) map.removeSource("humidity");
   },
 };

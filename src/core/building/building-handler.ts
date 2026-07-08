@@ -54,4 +54,18 @@ export const buildingHandler = {
 
     this.viewer.updateLayers(layerIds);
   },
+
+  async selectSensor(
+  sensor: {
+    name: string;
+    timeseriesId: string;
+    unit?: string;
+  }
+) {
+
+  await this.viewer?.loadSensorHistory(
+    sensor
+  );
+
+}
 };

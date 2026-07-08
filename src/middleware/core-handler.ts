@@ -45,7 +45,7 @@ export const executeCore = async (action: Action, events: Events) => {
   if (action.type === "CLOSE_BUILDING") {
     return buildingHandler.remove();
   }
-  if (action.type === "UPDATE_LAYERS") {
+  if (action.type === "UPDATE_LAYERS_MAP") {
     console.log("update layers - core handler");
     return mapHandler.updateLayers(action.payload);
   }
@@ -57,5 +57,8 @@ export const executeCore = async (action: Action, events: Events) => {
     console.log("update from core - toggle floorplans");
     const { active, floorplan } = action.payload;
     return buildingHandler.toggleFloorplan(active, floorplan);
+  }
+  if (action.type === "SELECT_SENSOR") {
+    return buildingHandler.selectSensor(action.payload);
   }
 };

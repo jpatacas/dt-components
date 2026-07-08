@@ -16,7 +16,10 @@ export const reducer = (state: State, action: Action) => {
     return { ...state, dtMode: action.payload };
   }
 
-  if (action.type === "UPDATE_LAYERS" || action.type === "UPDATE_LAYERS_BUILDING") {
+  if (
+    action.type === "UPDATE_LAYERS_MAP" ||
+    action.type === "UPDATE_LAYERS_BUILDING"
+  ) {
     return {
       ...state,
       activeLayers: action.payload,
@@ -27,6 +30,28 @@ export const reducer = (state: State, action: Action) => {
   }
   if (action.type === "UPDATE_PROPERTIES") {
     return { ...state, properties: action.payload };
+  }
+  if (action.type === "SELECT_SENSOR") {
+    //console.log(action.payload);
+    return {
+      ...state,
+      selectedSensor: action.payload,
+    };
+  }
+  if (action.type === "UPDATE_SENSOR_HISTORY") {
+    console.log(state);
+    return {
+      ...state,
+      sensorHistory: action.payload.history,
+      selectedSensor: action.payload.sensor,
+    };
+  }
+  if (action.type === "CLEAR_SENSOR_HISTORY") {
+    return {
+      ...state,
+      selectedSensor: null,
+      sensorHistory: [],
+    };
   }
   return { ...state };
 };

@@ -1,13 +1,13 @@
 import { sensorLayer } from "./sensor-layer";
 import { buildingLayer } from "./building-layer";
 import { airQualityLayer } from "./air-quality-layer";
-import type { LayerDefinition } from "../../../types";
+import type { MapLayerDefinition } from "../../../types";
 import { pm25Layer } from "./pm25-layer";
 import { no2Layer } from "./no2-layer";
 import { temperatureLayer } from "./temperature-layer";
 import { humidityLayer } from "./humidity-layer";
 
-export const layerRegistry: Record<string, LayerDefinition> = {
+export const mapLayerRegistry: Record<string, MapLayerDefinition> = {
   "sensors": sensorLayer,
   "buildings": buildingLayer,
   "aqi": airQualityLayer,
