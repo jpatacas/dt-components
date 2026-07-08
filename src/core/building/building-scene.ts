@@ -298,6 +298,27 @@ export class BuildingScene {
     const raycasters = this.components.get(OBC.Raycasters);
     this.caster = raycasters.get(this.world);
 
+    const clipper = this.components.get(OBC.Clipper);
+    clipper.enabled = true;
+
+    this.container.ondblclick = () => {
+      if (clipper.enabled) {
+        clipper.create(this.world);
+      }
+    };
+
+    const toggleClippings = () => {
+      for (const [, clipping] of clipper.list) {
+        clipping.enabled = !clipping.enabled;
+      }
+    };
+
+    window.onkeydown = (event) => {
+      if (event.code === "Delete" || event.code === "Backspace") {
+        if (clipper.enabled) clipper.delete(this.world);
+      }
+    };
+
     this.setupEvents();
 
     //Views - for floorplans
