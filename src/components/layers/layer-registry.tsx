@@ -6,6 +6,7 @@ import SensorsIcon from "@mui/icons-material/Sensors";
 import AnalyticsIcon from "@mui/icons-material/Analytics";
 import ThermostatIcon from "@mui/icons-material/Thermostat";
 import WaterDropIcon from "@mui/icons-material/WaterDrop";
+import { Grid4x4, HomeWork, Hvac } from "@mui/icons-material";
 
 export function getLayers(state: any) {
   const mode = state.dtMode;
@@ -65,6 +66,13 @@ export function getLayers(state: any) {
           { id: "building", label: "Building", icon: <ApartmentIcon /> },
           // { id: "satellite", label: "Satellite", icon: <SatelliteIcon /> },
           { id: "spaces", label: "Spaces", icon: <SpaceDashboardIcon /> },
+          {
+            id: "architectural",
+            label: "Architectural",
+            icon: <HomeWork />,
+          },
+          { id: "structural", label: "Structural", icon: <Grid4x4 /> },
+          { id: "mep", label: "MEP", icon: <Hvac /> },
         ],
       },
     ];

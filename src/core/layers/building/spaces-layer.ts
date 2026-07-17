@@ -11,7 +11,7 @@ export const spacesLayer = {
     // pipeline
     //reload scene??
 
-    await scene.showOnlySpaces()
+    await scene.showOnlySpaces2()
   },
 
   async remove(scene: BuildingScene) {

@@ -38,6 +38,8 @@ export class BuildingScene {
 
   private selectedRoom?: string;
 
+  private classifier!: OBC.Classifier;
+
   constructor(
     private container: HTMLDivElement,
     private building: Building,
@@ -189,6 +191,15 @@ export class BuildingScene {
     await this.loadAllModels();
 
     this.fragmentsReady = true;
+
+    this.classifier = this.components.get(OBC.Classifier);
+
+    // Build the standard IFC classifications
+    await this.classifier.byModel();
+    await this.classifier.byCategory();
+    await this.classifier.byIfcBuildingStorey();
+
+    console.log(this.classifier.list);
 
     this.highlighter = this.components.get(OBF.Highlighter);
     this.highlighter.setup({
@@ -660,6 +671,63 @@ export class BuildingScene {
     }
 
     return this.allItemsCache.get(model.modelId)!;
+  }
+
+  public async showOnlySpaces2() {
+    const spaces = await this.classifier.find({
+      Categories: ["IFCSPACE"],
+    });
+
+    console.log("Isolating IFCSPACES:", spaces);
+    await this.hider.isolate(spaces);
+  }
+
+  public async showArch() {
+    const architectural = await this.classifier.find({
+      Categories: [
+        "IFCWALL",
+        "IFCWALLSTANDARDCASE",
+        "IFCDOOR",
+        "IFCWINDOW",
+        "IFCSLAB",
+        "IFCSTAIR",
+        "IFCRAMP",
+        "IFCCOVERING",
+      ],
+    });
+
+    await this.hider.isolate(architectural);
+  }
+
+  public async showStruct() {
+    const structural = await this.classifier.find({
+      Categories: [
+        "IFCBEAM",
+        "IFCCOLUMN",
+        "IFCFOOTING",
+        "IFCMEMBER",
+        "IFCPILE",
+        "IFCPLATE",
+        "IFCSLAB",
+      ],
+    });
+    await this.hider.isolate(structural);
+  }
+
+  public async showMEP() {
+    const mep = await this.classifier.find({
+      Categories: [
+        "IFCFLOWSEGMENT",
+        "IFCFLOWTERMINAL",
+        "IFCFLOWFITTING",
+        "IFCFLOWCONTROLLER",
+        "IFCFLOWDEVICE",
+        "IFCDUCTSEGMENT",
+        "IFCPIPESEGMENT",
+        "IFCCABLECARRIERSEGMENT",
+      ],
+    });
+    await this.hider.isolate(mep);
   }
 
   public async showOnlySpaces() {
