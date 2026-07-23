@@ -55,7 +55,7 @@ export interface Property {
   value: string;
   type?: any;
   unit?: any;
-  timeseriesId? : any;
+  timeseriesId?: any;
 }
 
 /**
@@ -100,4 +100,63 @@ export interface BuildingLayerDefinition extends LayerConfig {
 
   add: (scene: BuildingScene, data?: any) => Promise<void>;
   remove: (scene: BuildingScene) => Promise<void>;
+}
+
+export interface BuildingAlert {
+  room: string;
+  metric: string;
+  value: number;
+  unit?: string;
+  severity: "warning" | "critical";
+  message: string;
+}
+
+export interface BuildingDashboard {
+  rooms: number;
+  totalRooms: number;
+  monitoredRooms: number;
+
+  occupiedRooms: number;
+  unoccupiedRooms: number;
+  occupancyRate: number;
+
+  avgTemperature: number;
+  avgHumidity: number;
+  avgCO2: number;
+
+  maxTemperature: number;
+  minTemperature: number;
+
+  alerts: number;
+  alertList: BuildingAlert[];
+
+  lastUpdated: Date;
+  lastUpdatedText: string;
+
+  comfortIndex: number;
+  coveragePercentage: number;
+  occupancyChange: number;
+  sensorHealth: number;
+
+  onlineSensors: number;
+  offlineSensors: number;
+  totalSensors: number;
+}
+
+export interface RoomInfo {
+  modelId: string;
+  localId: number;
+
+  name: string;
+  longName?: string;
+  floor?: string;
+  area?: number;
+
+  occupancy?: number;
+  occupied?: boolean;
+
+  temperature?: number;
+  humidity?: number;
+  co2?: number;
+  light?: number;
 }
