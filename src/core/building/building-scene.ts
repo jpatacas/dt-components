@@ -1,6 +1,12 @@
 import * as OBC from "@thatopen/components";
 import * as OBF from "@thatopen/components-front";
-import type { Building, Floorplan } from "../../types";
+import type {
+  Building,
+  Floorplan,
+  RoomInfo,
+  BuildingDashboard,
+  BuildingAlert,
+} from "../../types";
 import workerUrl from "@thatopen/fragments/dist/Worker/worker.mjs?worker&url";
 import { localModelStore } from "../db/local-model-store";
 import type { Events } from "../../middleware/event-handler";
@@ -32,13 +38,19 @@ export class BuildingScene {
 
   private hider!: OBC.Hider;
 
-  private roomLookup = new Map<string, { name: string; value: string }[]>();
+  // private roomLookup = new Map<string, { name: string; value: string }[]>();
+
+  private roomLookup = new Map<string, RoomInfo>();
+
+  private dashboard?: BuildingDashboard;
 
   private layerCategories = new Map<string, Set<string>>();
 
   private selectedRoom?: string;
 
   private classifier!: OBC.Classifier;
+
+  private previousOccupiedRooms = 0;
 
   constructor(
     private container: HTMLDivElement,
@@ -362,9 +374,12 @@ export class BuildingScene {
     //Hider for building layers
     this.hider = this.components.get(OBC.Hider);
 
-    //room lookup for UO
-    await this.buildRoomLookup();
-    console.log(this.roomLookup);
+    //room lookup for UO - USB only! - need to improve this
+    if (this.building.name === "USB") {
+      await this.buildRoomLookup();
+      console.log(this.roomLookup);
+    }
+
   }
 
   // --------------------------------------------------
@@ -920,16 +935,57 @@ export class BuildingScene {
 
     const data = await response.json();
 
+    this.roomLookup.clear();
+
+    const temperatures: number[] = [];
+    const humidities: number[] = [];
+    const co2Values: number[] = [];
+    const alertList: BuildingAlert[] = [];
+
+    const now = new Date();
+
+    let totalSensors = 0;
+    let onlineSensors = 0;
+    let offlineSensors = 0;
+
+    // let monitoredRooms = 0;
+    // let alerts = 0;
+
+    let occupiedRooms = 0;
+    let unoccupiedRooms = 0;
+
+    const monitoredRoomSet = new Set<string>();
+
     for (const entity of data.items ?? []) {
       const roomNumber = entity.meta?.roomNumber;
 
       if (!roomNumber) continue;
 
+     // monitoredRooms++;
+
+     monitoredRoomSet.add(roomNumber)
+
       const sensors = [];
 
       for (const feed of entity.feed ?? []) {
         for (const ts of feed.timeseries ?? []) {
-          const value = ts.latest?.value;
+          totalSensors++; // check this
+
+          const latest = ts.latest;
+
+          if (
+            latest?.value !== undefined &&
+            latest?.value !== null &&
+            latest?.value !== ""
+          ) {
+            onlineSensors++;
+          } else {
+            offlineSensors++;
+          }
+
+          if (!latest) continue;
+
+          const value = latest.value;
 
           if (value === undefined || value === null || value === "") {
             continue;
@@ -941,11 +997,197 @@ export class BuildingScene {
             timeseriesId: ts.timeseriesId,
             unit: ts.unit?.name,
           });
+
+          //--------------------------------------------------
+          // Executive KPI statistics
+          //--------------------------------------------------
+
+          const numeric = Number(value);
+
+          if (Number.isNaN(numeric)) continue;
+
+          switch (feed.metric?.toLowerCase()) {
+            case "room temperature":
+              temperatures.push(numeric);
+
+              // if (numeric < 18 || numeric > 26) {
+              //   alerts++;
+              // }
+              if (numeric < 18) {
+                alertList.push({
+                  room: roomNumber,
+                  metric: "Temperature",
+                  value: numeric,
+                  unit: ts.unit?.name,
+                  severity: "warning",
+                  message: `Temperature is too low (${numeric}${ts.unit?.name ?? "°C"})`,
+                });
+              }
+
+              if (numeric > 26) {
+                alertList.push({
+                  room: roomNumber,
+                  metric: "Temperature",
+                  value: numeric,
+                  unit: ts.unit?.name,
+                  severity: numeric > 30 ? "critical" : "warning",
+                  message: `Temperature is too high (${numeric}${ts.unit?.name ?? "°C"})`,
+                });
+              }
+              break;
+
+            case "relative humidity":
+              humidities.push(numeric);
+
+              // if (numeric < 30 || numeric > 70) {
+              //   alerts++;
+              // }
+
+              if (numeric < 30) {
+                alertList.push({
+                  room: roomNumber,
+                  metric: "Humidity",
+                  value: numeric,
+                  unit: "%",
+                  severity: "warning",
+                  message: `Humidity is below the recommended range (${numeric}%)`,
+                });
+              }
+
+              if (numeric > 70) {
+                alertList.push({
+                  room: roomNumber,
+                  metric: "Humidity",
+                  value: numeric,
+                  unit: "%",
+                  severity: numeric > 80 ? "critical" : "warning",
+                  message: `Humidity is above the recommended range (${numeric}%)`,
+                });
+              }
+              break;
+
+            case "co2":
+              co2Values.push(numeric);
+
+              // if (numeric > 1000) {
+              //   alerts++;
+              // }
+              if (numeric > 1000) {
+                alertList.push({
+                  room: roomNumber,
+                  metric: "CO₂",
+                  value: numeric,
+                  unit: "ppm",
+                  severity: numeric > 1500 ? "critical" : "warning",
+                  message: `High CO₂ concentration (${numeric} ppm)`,
+                });
+              }
+              break;
+
+            case "occupancy sensor":
+              if (numeric === 1) {
+                occupiedRooms++;
+              } else if (numeric === 0) {
+                unoccupiedRooms++;
+              }
+              break;
+          }
         }
       }
 
-      this.roomLookup.set(roomNumber, sensors);
+      this.roomLookup.set(roomNumber, sensors); //need to change this to match with RoomInfo interface
     }
+
+    const average = (values: number[]) =>
+      values.length ? values.reduce((a, b) => a + b, 0) / values.length : 0;
+
+    const avgTemperature = average(temperatures);
+    const avgHumidity = average(humidities);
+    const avgCO2 = average(co2Values);
+
+    const monitoredRooms = monitoredRoomSet.size;
+
+    const occupancyRate =
+      occupiedRooms + unoccupiedRooms > 0
+        ? (occupiedRooms / (occupiedRooms + unoccupiedRooms)) * 100
+        : 0;
+
+    const coveragePercentage =
+      this.roomLookup.size > 0
+        ? (monitoredRooms / this.roomLookup.size) * 100
+        : 0;
+
+    const sensorHealth =
+      totalSensors > 0 ? (onlineSensors / totalSensors) * 100 : 0;
+
+    const occupancyChange =
+      monitoredRooms > 0
+        ? ((occupiedRooms - this.previousOccupiedRooms) / monitoredRooms) * 100
+        : 0;
+
+    this.previousOccupiedRooms = occupiedRooms;
+
+    let comfortIndex = 100;
+
+    if (avgTemperature < 20 || avgTemperature > 24) comfortIndex -= 20;
+
+    if (avgHumidity < 40 || avgHumidity > 60) comfortIndex -= 20;
+
+    if (avgCO2 > 1000) comfortIndex -= 30;
+
+    comfortIndex -= alertList.length * 5;
+
+    comfortIndex = Math.max(0, comfortIndex);
+
+    this.dashboard = {
+      rooms: this.roomLookup.size,
+
+      monitoredRooms,
+      totalRooms: this.roomLookup.size,
+
+      occupiedRooms,
+      unoccupiedRooms,
+
+      occupancyRate,
+
+      avgTemperature,
+      avgHumidity,
+      avgCO2,
+
+      maxTemperature: temperatures.length > 0 ? Math.max(...temperatures) : 0,
+
+      minTemperature: temperatures.length > 0 ? Math.min(...temperatures) : 0,
+
+      alerts: alertList.length,
+      alertList,
+
+      comfortIndex,
+
+      coveragePercentage,
+
+      occupancyChange,
+
+      sensorHealth,
+
+      onlineSensors,
+      offlineSensors,
+      totalSensors,
+
+      lastUpdated: now,
+
+      lastUpdatedText: now.toLocaleString("en-GB", {
+        dateStyle: "medium",
+        timeStyle: "medium",
+      }),
+    };
+
+    console.log("Room lookup:", this.roomLookup.size);
+    console.log("Dashboard:", this.dashboard);
+
+    this.events.trigger({
+      type: "UPDATE_BUILDING_DASHBOARD",
+      payload: this.dashboard,
+    });
   }
 
   public async getSensorHistory(timeseriesId: string) {
