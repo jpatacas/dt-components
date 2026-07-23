@@ -1,5 +1,5 @@
 import { type User } from "firebase/auth";
-import type { Building, Floorplan, Property } from "../types";
+import type { Building, BuildingDashboard, Floorplan, Property } from "../types";
 
 export interface State {
   sensorHistory: any;
@@ -10,6 +10,7 @@ export interface State {
   map?: any;
   floorplans: Floorplan[];
   properties: Property[];
+  buildingDashboard: BuildingDashboard | null;
 
   selectedSensor?: {
     name: string;
@@ -33,5 +34,6 @@ export const initialState: State = {
   sensors: [],
   floorplans: [],
   properties: [],
-  sensorHistory: []
+  sensorHistory: [],
+  buildingDashboard: null
 };

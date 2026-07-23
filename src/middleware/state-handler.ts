@@ -53,5 +53,12 @@ export const reducer = (state: State, action: Action) => {
       sensorHistory: [],
     };
   }
+  if (action.type === "UPDATE_BUILDING_DASHBOARD") {
+    return {
+      ...state,
+      buildingDashboard: action.payload,
+    };
+  }
+
   return { ...state };
 };
