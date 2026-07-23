@@ -8,7 +8,7 @@ import { BuildingFrontMenu } from "./front-menu/building-front-menu";
 import { type FrontMenuMode } from "./types";
 import { BuildingViewport } from "./viewport/building-viewport";
 import { NavBar } from "../navbar/navbar";
-import { BottomDrawer } from "./bottom-menu/bottom-drawer";
+import { BuildingDashboard } from "./bottom-menu/building-dashboard";
 import { getLayers } from "../layers/layer-registry";
 
 export const BuildingViewer: FC = () => {
@@ -129,7 +129,7 @@ export const BuildingViewer: FC = () => {
         </Box>
       </Box>
 
-      <BottomDrawer
+      <BuildingDashboard
         open={bottomOpen}
         toggleDrawer={toggleBottomDrawer}
         kpis={districtKPIs}
@@ -146,7 +146,7 @@ export const BuildingViewer: FC = () => {
           }}
           onClick={toggleBottomDrawer}
         >
-          Show Building KPIs
+          Show Building Dashboard
         </Button>
       )}
     </Box>

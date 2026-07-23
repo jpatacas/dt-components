@@ -1,4 +1,6 @@
-import MuiAppBar, { type AppBarProps as MuiAppBarProps } from "@mui/material/AppBar";
+import MuiAppBar, {
+  type AppBarProps as MuiAppBarProps,
+} from "@mui/material/AppBar";
 import { type CSSObject, styled, type Theme } from "@mui/material/styles";
 import MuiDrawer from "@mui/material/Drawer";
 
@@ -81,9 +83,17 @@ export function getBottomDrawer(height: number) {
   return styled(MuiDrawer)(({ theme }) => ({
     "& .MuiDrawer-paper": {
       height: height,
-      overflow: "visible",
+      maxHeight: "85vh",
+      overflow: "hidden",
       // top: "auto",
       // bottom: 0,
+      width: "90%",
+      maxWidth: 1600,
+      margin: "0 auto",
+      left: "5%",
+      right: "5%",
+      // overflowY: "auto",
+      // overflowX: "hidden"
     },
   }));
 }
