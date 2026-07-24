@@ -127,6 +127,12 @@ export interface BuildingDashboard {
   maxTemperature: number;
   minTemperature: number;
 
+  maxHumidity: number;
+  minHumidity: number;
+
+  maxCO2: number;
+  minCO2: number;
+
   alerts: number;
   alertList: BuildingAlert[];
 
@@ -159,4 +165,73 @@ export interface RoomInfo {
   humidity?: number;
   co2?: number;
   light?: number;
+}
+
+export interface SensorValue {
+  value: number;
+  lat: number;
+  lng: number;
+  name?: string;
+}
+
+// export interface SensorLocation {
+//   lat: number;
+//   lng: number;
+//   name?: string;
+// }
+
+export interface DistrictAlert {
+  sensor: string;
+  metric: string;
+  value: number;
+  unit?: string;
+  severity: "warning" | "critical";
+  message: string;
+}
+
+export interface DistrictDashboard {
+  monitoredSensors: number;
+  onlineSensors: number;
+  sensorHealth: number;
+
+  avgTemperature: number;
+  minTemperature: number;
+  maxTemperature: number;
+
+  avgHumidity: number;
+  minHumidity: number;
+  maxHumidity: number;
+
+  avgNO2: number;
+  minNO2: number;
+  maxNO2: number;
+
+  avgPM25: number;
+  minPM25: number;
+  maxPM25: number;
+
+  hottestLocation?: string;
+  coldestLocation?: string;
+  worstAirQualityLocation?: string;
+
+  alerts: number;
+  alertList: DistrictAlert[];
+
+  lastUpdated: Date;
+  lastUpdatedText: string;
+}
+
+export interface UrbanSensor {
+  Sensor_Name: string;
+  Sensor_Centroid_Latitude: number;
+  Sensor_Centroid_Longitude: number;
+
+  values: Record<
+    string,
+    {
+      Value: number;
+      Unit?: string;
+      Timestamp?: string;
+    }
+  >;
 }
