@@ -59,6 +59,12 @@ export const reducer = (state: State, action: Action) => {
       buildingDashboard: action.payload,
     };
   }
+  if (action.type === "UPDATE_DISTRICT_DASHBOARD") {
+    return {
+      ...state,
+      districtDashboard: action.payload,
+    };
+  }
 
   return { ...state };
 };
