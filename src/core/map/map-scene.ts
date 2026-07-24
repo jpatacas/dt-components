@@ -1,6 +1,13 @@
 import * as MAPBOX from "mapbox-gl";
 import { MAPBOX_KEY } from "../../config";
-import type { Building, GisParameters, LngLat } from "../../types";
+import type {
+  Building,
+  GisParameters,
+  LngLat,
+  DistrictDashboard,
+  DistrictAlert,
+  UrbanSensor,
+} from "../../types";
 import type { User } from "firebase/auth";
 import { MapDatabase } from "./map-database";
 import type { Events } from "../../middleware/event-handler";
@@ -23,6 +30,21 @@ export class MapScene {
   private events: Events;
 
   private activeLayers = new Set<string>();
+
+  private sensorCache: UrbanSensor[] = [];
+
+  private dashboard?: DistrictDashboard;
+
+  public getDashboard() {
+    return this.dashboard;
+  }
+
+  //helper for District Dashboard
+  // private average(values: number[]) {
+  //   return values.length
+  //     ? values.reduce((a, b) => a + b, 0) / values.length
+  //     : 0;
+  // }
 
   constructor(container: HTMLDivElement, events: Events) {
     this.events = events;
@@ -57,11 +79,23 @@ export class MapScene {
       antialias: true,
     });
 
-    this.map.on("load", () => {
-      //this.mapLoaded = true;
+    // this.map.on("load", () => {
+    //   //this.mapLoaded = true;
+    //   this.setupBuildingSource();
+    //   //this.setupSensorSource();
+    //   this.setupInteractions();
+    //   this.resolveReady();
+    //   this.buildDistrictDashboard();
+    // });
+
+    this.map.on("load", async () => {
       this.setupBuildingSource();
-      //this.setupSensorSource();
       this.setupInteractions();
+
+      await this.loadUrbanObservatoryData();
+
+      this.buildDistrictDashboard();
+
       this.resolveReady();
     });
   }
@@ -255,7 +289,7 @@ export class MapScene {
       this.onBuildingSelected(building);
     });
 
-    //to do: this should check if its on the correct layer / generalise for all layers 
+    //to do: this should check if its on the correct layer / generalise for all layers
     this.map.on("click", (e) => {
       const features = this.map.queryRenderedFeatures(e.point, {
         layers: ["sensor-layer"],
@@ -345,15 +379,268 @@ export class MapScene {
           continue;
         }
 
-        if (layer.fetch) {
-          const data = await layer.fetch();
-          layer.add(this.map, data);
-        } else {
-          layer.add(this.map);
+        // if (layer.fetch) {
+        //   const data = await layer.fetch();
+        //   layer.add(this.map, data);
+        // } else {
+        //   layer.add(this.map);
+        // }
+
+        if (this.sensorCache.length === 0) {
+          await this.loadUrbanObservatoryData();
         }
+
+        layer.add(this.map, this.sensorCache);
       }
     }
 
     this.activeLayers = next;
+  }
+
+  private async loadUrbanObservatoryData() {
+    const base = "https://corsproxy.io/?https://api.v2.urbanobservatory.ac.uk";
+
+    const [sensorResponse, readingResponse] = await Promise.all([
+      fetch(`${base}/sensors/json?limit=-1`),
+      fetch(`${base}/sensors/data/json?start=2026-07-24T13:00:00`),
+    ]);
+
+    const sensorsJson = await sensorResponse.json();
+    const readingsJson = await readingResponse.json();
+
+    const sensors = sensorsJson.Sensors ?? [];
+    const readings = readingsJson.Readings ?? [];
+
+    console.log("Sensors", sensors);
+    console.log("Readings: ", readings);
+
+    //------------------------------------------------------------------
+    // Group readings by sensor
+    //------------------------------------------------------------------
+
+    const readingMap = new Map<string, Record<string, any>>();
+
+    for (const reading of readings) {
+      if (reading.Value == null) continue;
+
+      let sensorValues = readingMap.get(reading.Sensor_Name);
+
+      if (!sensorValues) {
+        sensorValues = {};
+        readingMap.set(reading.Sensor_Name, sensorValues);
+      }
+
+      sensorValues[reading.Variable] = {
+        Value: Number(reading.Value),
+        Unit: reading.Units ?? reading.Unit,
+        Timestamp: reading.Timestamp,
+      };
+    }
+
+    //------------------------------------------------------------------
+    // Merge metadata + readings
+    //------------------------------------------------------------------
+
+    this.sensorCache = sensors.map((sensor: any) => ({
+      ...sensor,
+
+      values: readingMap.get(sensor.Sensor_Name) ?? {},
+    }));
+
+    console.log(`Loaded ${this.sensorCache.length} Urban Observatory sensors`);
+  }
+
+  private buildDistrictDashboard() {
+    const temperatures: number[] = [];
+    const humidities: number[] = [];
+    const no2: number[] = [];
+    const pm25: number[] = [];
+
+    const alertList: DistrictAlert[] = [];
+
+    let hottest = -Infinity;
+    let coldest = Infinity;
+
+    let hottestLocation = "";
+    let coldestLocation = "";
+
+    let worstAirQuality = -Infinity;
+    let worstAirQualityLocation = "";
+
+    for (const sensor of this.sensorCache) {
+      const values = sensor.values;
+
+      //----------------------------------------------------------
+      // Temperature
+      //----------------------------------------------------------
+
+      if (values["Temperature"]) {
+        const t = values["Temperature"].Value;
+
+        temperatures.push(t);
+
+        if (t > hottest) {
+          hottest = t;
+          hottestLocation = `${sensor.Sensor_Centroid_Latitude.toFixed(5)}, ${sensor.Sensor_Centroid_Longitude.toFixed(5)}`;
+        }
+
+        if (t < coldest) {
+          coldest = t;
+          coldestLocation = `${sensor.Sensor_Centroid_Latitude.toFixed(5)}, ${sensor.Sensor_Centroid_Longitude.toFixed(5)}`;
+        }
+
+        if (t > 30) {
+          alertList.push({
+            sensor: sensor.Sensor_Name,
+            metric: "Temperature",
+            value: t,
+            unit: "°C",
+            severity: "critical",
+            message: `Very high outdoor temperature (${t}°C)`,
+          });
+        }
+
+        if (t < -5) {
+          alertList.push({
+            sensor: sensor.Sensor_Name,
+            metric: "Temperature",
+            value: t,
+            unit: "°C",
+            severity: "warning",
+            message: `Very low outdoor temperature (${t}°C)`,
+          });
+        }
+      }
+
+      //----------------------------------------------------------
+      // Humidity
+      //----------------------------------------------------------
+
+      if (values["Humidity"]) {
+        const h = values["Humidity"].Value;
+
+        humidities.push(h);
+
+        if (h > 90) {
+          alertList.push({
+            sensor: sensor.Sensor_Name,
+            metric: "Humidity",
+            value: h,
+            unit: "%",
+            severity: "warning",
+            message: `High humidity (${h}%)`,
+          });
+        }
+      }
+
+      //----------------------------------------------------------
+      // NO2
+      //----------------------------------------------------------
+
+      if (values["NO2"]) {
+        const n = values["NO2"].Value;
+
+        no2.push(n);
+
+        if (n > 200) {
+          alertList.push({
+            sensor: sensor.Sensor_Name,
+            metric: "NO₂",
+            value: n,
+            unit: "µg/m³",
+            severity: n > 400 ? "critical" : "warning",
+            message: `Elevated NO₂ concentration`,
+          });
+        }
+      }
+
+      //----------------------------------------------------------
+      // PM2.5
+      //----------------------------------------------------------
+
+      if (values["PM2.5"]) {
+        const p = values["PM2.5"].Value;
+
+        pm25.push(p);
+
+        if (p > worstAirQuality) {
+          worstAirQuality = p;
+
+          worstAirQualityLocation = `${sensor.Sensor_Centroid_Latitude.toFixed(5)}, ${sensor.Sensor_Centroid_Longitude.toFixed(5)}`;
+        }
+
+        if (p > 25) {
+          alertList.push({
+            sensor: sensor.Sensor_Name,
+            metric: "PM2.5",
+            value: p,
+            unit: "µg/m³",
+            severity: p > 50 ? "critical" : "warning",
+            message: `Poor air quality (${p} µg/m³)`,
+          });
+        }
+      }
+    }
+
+    //--------------------------------------------------------------
+    // Statistics
+    //--------------------------------------------------------------
+
+    const average = (v: number[]) =>
+      v.length ? v.reduce((a, b) => a + b, 0) / v.length : 0;
+
+    const now = new Date();
+
+    this.dashboard = {
+      monitoredSensors: this.sensorCache.length,
+
+      onlineSensors: this.sensorCache.filter(
+        (s) => Object.keys(s.values).length > 0,
+      ).length,
+
+      sensorHealth:
+        this.sensorCache.length > 0
+          ? (this.sensorCache.filter((s) => Object.keys(s.values).length > 0)
+              .length /
+              this.sensorCache.length) *
+            100
+          : 0,
+
+      avgTemperature: average(temperatures),
+      minTemperature: temperatures.length ? Math.min(...temperatures) : 0,
+      maxTemperature: temperatures.length ? Math.max(...temperatures) : 0,
+
+      avgHumidity: average(humidities),
+      minHumidity: humidities.length ? Math.min(...humidities) : 0,
+      maxHumidity: humidities.length ? Math.max(...humidities) : 0,
+
+      avgNO2: average(no2),
+      minNO2: no2.length ? Math.min(...no2) : 0,
+      maxNO2: no2.length ? Math.max(...no2) : 0,
+
+      avgPM25: average(pm25),
+      minPM25: pm25.length ? Math.min(...pm25) : 0,
+      maxPM25: pm25.length ? Math.max(...pm25) : 0,
+
+      hottestLocation,
+      coldestLocation,
+      worstAirQualityLocation,
+
+      alerts: alertList.length,
+      alertList,
+
+      lastUpdated: now,
+      lastUpdatedText: now.toLocaleString("en-GB", {
+        dateStyle: "medium",
+        timeStyle: "medium",
+      }),
+    };
+
+    console.log(this.dashboard);
+
+    this.events.trigger({
+      type: "UPDATE_DISTRICT_DASHBOARD",
+      payload: this.dashboard,
+    });
   }
 }
