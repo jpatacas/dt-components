@@ -6,7 +6,7 @@ import "./map-viewer.css";
 import { NavBar } from "../navbar/navbar";
 import { Drawer } from "./side-menu/drawer";
 import type { Tool } from "../../types";
-import { BottomDrawer } from "./bottom-menu/bottom-drawer";
+import { DistrictDashboard } from "./bottom-menu/district-dashboard";
 import { getLayers } from "../layers/layer-registry";
 
 export const MapViewer: FC = () => {
@@ -149,10 +149,9 @@ export const MapViewer: FC = () => {
         </Button>
       </div> */}
 
-      <BottomDrawer
+      <DistrictDashboard
         open={bottomOpen}
         toggleDrawer={toggleBottomDrawer}
-        kpis={districtKPIs}
       />
 
       {!bottomOpen && (
@@ -166,7 +165,7 @@ export const MapViewer: FC = () => {
           }}
           onClick={toggleBottomDrawer}
         >
-          Show District KPIs
+          Show District Dashboard
         </Button>
       )}
     </>
