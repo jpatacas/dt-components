@@ -379,7 +379,6 @@ export class BuildingScene {
       await this.buildRoomLookup();
       console.log(this.roomLookup);
     }
-
   }
 
   // --------------------------------------------------
@@ -961,9 +960,9 @@ export class BuildingScene {
 
       if (!roomNumber) continue;
 
-     // monitoredRooms++;
+      // monitoredRooms++;
 
-     monitoredRoomSet.add(roomNumber)
+      monitoredRoomSet.add(roomNumber);
 
       const sensors = [];
 
@@ -1109,7 +1108,7 @@ export class BuildingScene {
 
     const occupancyRate =
       occupiedRooms + unoccupiedRooms > 0
-        ? (occupiedRooms / (occupiedRooms + unoccupiedRooms)) * 100
+        ? (occupiedRooms / monitoredRooms) * 100
         : 0;
 
     const coveragePercentage =
@@ -1157,6 +1156,14 @@ export class BuildingScene {
       maxTemperature: temperatures.length > 0 ? Math.max(...temperatures) : 0,
 
       minTemperature: temperatures.length > 0 ? Math.min(...temperatures) : 0,
+
+      maxHumidity: humidities.length > 0 ? Math.max(...humidities) : 0,
+
+      minHumidity: humidities.length > 0 ? Math.min(...humidities) : 0,
+
+      maxCO2: co2Values.length > 0 ? Math.max(...co2Values) : 0,
+
+      minCO2: co2Values.length > 0 ? Math.min(...co2Values) : 0,
 
       alerts: alertList.length,
       alertList,

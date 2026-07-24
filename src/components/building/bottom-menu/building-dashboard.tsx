@@ -81,7 +81,7 @@ export const BuildingDashboard: FC<{
 
                 <Typography variant="caption">
                   {dashboard?.occupiedRooms ?? "--"} /{" "}
-                  {dashboard?.occupiedRooms + dashboard?.unoccupiedRooms ?? "--"} rooms occupied
+                  {dashboard?.monitoredRooms ?? "--"} rooms occupied
                 </Typography>
               </Paper>
             </Grid>
@@ -108,6 +108,10 @@ export const BuildingDashboard: FC<{
                 <Typography variant="h5">
                   {format(dashboard?.avgHumidity)} %
                 </Typography>
+                <Typography variant="caption">
+                  Min {format(dashboard?.minHumidity)}% / Max{" "}
+                  {format(dashboard?.maxHumidity)}%
+                </Typography>
               </Paper>
             </Grid>
 
@@ -117,6 +121,10 @@ export const BuildingDashboard: FC<{
 
                 <Typography variant="h5">
                   {format(dashboard?.avgCO2)} ppm
+                </Typography>
+                <Typography variant="caption">
+                  Min {format(dashboard?.minCO2)}ppm / Max{" "}
+                  {format(dashboard?.maxCO2)}ppm
                 </Typography>
               </Paper>
             </Grid>
@@ -296,80 +304,4 @@ export const BuildingDashboard: FC<{
       </Box>
     </Drawer>
   );
-
-  // return (
-  //   <Drawer anchor="bottom" variant="persistent" open={open}>
-  //     <Box sx={{ p: 2 }}>
-  //       <Box
-  //         sx={{
-  //           display: "flex",
-  //           justifyContent: "space-between",
-  //           alignItems: "center",
-  //         }}
-  //       >
-  //         <Typography variant="h6">Building Dashboard</Typography>
-
-  //         <IconButton onClick={toggleDrawer}>
-  //           {open ? <ExpandMoreIcon /> : <ExpandLessIcon />}
-  //         </IconButton>
-  //       </Box>
-
-  //       <Grid container spacing={2} sx={{ mt: 1 }}>
-  //         <Grid item xs={3}>
-  //           <Paper sx={{ p: 2 }}>
-  //             <Typography variant="subtitle2">Occupancy</Typography>
-  //             <Typography variant="h5">
-  //               {state.buildingDashboard?.occupancyRate}
-  //             </Typography>
-  //           </Paper>
-  //         </Grid>
-
-  //         <Grid item xs={3}>
-  //           <Paper sx={{ p: 2 }}>
-  //             <Typography variant="subtitle2">Average temperature</Typography>
-  //             <Typography variant="h5">
-  //               {state.buildingDashboard?.avgTemperature}
-  //             </Typography>
-  //           </Paper>
-  //         </Grid>
-
-  //         <Grid item xs={3}>
-  //           <Paper sx={{ p: 2 }}>
-  //             <Typography variant="subtitle2">Average humidity</Typography>
-  //             <Typography variant="h5">
-  //               {state.buildingDashboard?.avgHumidity}
-  //             </Typography>
-  //           </Paper>
-  //         </Grid>
-
-  //         <Grid item xs={3}>
-  //           <Paper sx={{ p: 2 }}>
-  //             <Typography variant="subtitle2">Alerts</Typography>
-  //             <Typography variant="h5">
-  //               {state.buildingDashboard?.alerts}
-  //             </Typography>
-  //           </Paper>
-  //         </Grid>
-
-  //         <Grid item xs={3}>
-  //           <Paper sx={{ p: 2 }}>
-  //             <Typography variant="subtitle2">Average CO2</Typography>
-  //             <Typography variant="h5">
-  //               {state.buildingDashboard?.avgCO2}
-  //             </Typography>
-  //           </Paper>
-  //         </Grid>
-
-  //         <Grid item xs={3}>
-  //           <Paper sx={{ p: 2 }}>
-  //             <Typography variant="subtitle2">Last updated</Typography>
-  //             <Typography variant="h5">
-  //               {state.buildingDashboard?.lastUpdatedText}
-  //             </Typography>
-  //           </Paper>
-  //         </Grid>
-  //       </Grid>
-  //     </Box>
-  //   </Drawer>
-  // );
 };
