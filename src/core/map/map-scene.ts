@@ -39,13 +39,6 @@ export class MapScene {
     return this.dashboard;
   }
 
-  //helper for District Dashboard
-  // private average(values: number[]) {
-  //   return values.length
-  //     ? values.reduce((a, b) => a + b, 0) / values.length
-  //     : 0;
-  // }
-
   constructor(container: HTMLDivElement, events: Events) {
     this.events = events;
     this.ready = new Promise((resolve) => {
@@ -78,15 +71,6 @@ export class MapScene {
       bearing: config.bearing,
       antialias: true,
     });
-
-    // this.map.on("load", () => {
-    //   //this.mapLoaded = true;
-    //   this.setupBuildingSource();
-    //   //this.setupSensorSource();
-    //   this.setupInteractions();
-    //   this.resolveReady();
-    //   this.buildDistrictDashboard();
-    // });
 
     this.map.on("load", async () => {
       this.setupBuildingSource();
@@ -289,23 +273,6 @@ export class MapScene {
       this.onBuildingSelected(building);
     });
 
-    //to do: this should check if its on the correct layer / generalise for all layers
-    this.map.on("click", (e) => {
-      const features = this.map.queryRenderedFeatures(e.point, {
-        layers: ["sensor-layer"],
-      });
-
-      if (!features.length) return;
-
-      const feature = features[0];
-      const coords = (feature.geometry as any).coordinates.slice();
-
-      new MAPBOX.Popup()
-        .setLngLat(coords)
-        .setHTML(`<b>${feature.properties?.name}</b>`)
-        .addTo(this.map);
-    });
-
     this.map.on("mouseenter", "user-buildings-layer", () => {
       this.map.getCanvas().style.cursor = "pointer";
     });
@@ -349,6 +316,9 @@ export class MapScene {
   public async updateLayers(layerIds: string[]) {
     await this.ready;
 
+    // Close any open popup
+    document.querySelectorAll(".mapboxgl-popup").forEach((p) => p.remove());
+
     const next = new Set(layerIds.filter(Boolean)); //  remove undefined
 
     console.log("Selected layers:", layerIds);
@@ -379,13 +349,6 @@ export class MapScene {
           continue;
         }
 
-        // if (layer.fetch) {
-        //   const data = await layer.fetch();
-        //   layer.add(this.map, data);
-        // } else {
-        //   layer.add(this.map);
-        // }
-
         if (this.sensorCache.length === 0) {
           await this.loadUrbanObservatoryData();
         }
@@ -402,7 +365,7 @@ export class MapScene {
 
     const [sensorResponse, readingResponse] = await Promise.all([
       fetch(`${base}/sensors/json?limit=-1`),
-      fetch(`${base}/sensors/data/json?start=2026-07-24T13:00:00`),
+      fetch(`${base}/sensors/data/json`),
     ]);
 
     const sensorsJson = await sensorResponse.json();
@@ -411,17 +374,32 @@ export class MapScene {
     const sensors = sensorsJson.Sensors ?? [];
     const readings = readingsJson.Readings ?? [];
 
-    console.log("Sensors", sensors);
-    console.log("Readings: ", readings);
-
     //------------------------------------------------------------------
     // Group readings by sensor
     //------------------------------------------------------------------
 
+    const sensorsPerVariable = new Map<string, Set<string>>();
+
+    for (const reading of readings) {
+      const variable = reading.Variable;
+
+      if (!sensorsPerVariable.has(variable)) {
+        sensorsPerVariable.set(variable, new Set());
+      }
+
+      sensorsPerVariable.get(variable)!.add(reading.Sensor_Name);
+    }
+
+    console.table(
+      [...sensorsPerVariable.entries()].map(([variable, sensors]) => ({
+        variable,
+        sensors: sensors.size,
+      })),
+    );
+
     const readingMap = new Map<string, Record<string, any>>();
 
     for (const reading of readings) {
-      if (reading.Value == null) continue;
 
       let sensorValues = readingMap.get(reading.Sensor_Name);
 
@@ -430,7 +408,21 @@ export class MapScene {
         readingMap.set(reading.Sensor_Name, sensorValues);
       }
 
-      sensorValues[reading.Variable] = {
+      const variable = (reading.Variable ?? "").toLowerCase();
+
+      let key: string | undefined;
+
+      if (variable.includes("temperature")) key = "Temperature";
+      else if (variable.includes("humidity")) key = "Humidity";
+      else if (variable.includes("pm2.5")) key = "PM2.5";
+      else if (variable.includes("pm10")) key = "PM10";
+      else if (variable.includes("no2")) key = "NO2";
+      else if (variable.includes("noise")) key = "Noise";
+      else if (variable.includes("co2")) key = "CO2";
+
+      if (!key) continue;
+
+      sensorValues[key] = {
         Value: Number(reading.Value),
         Unit: reading.Units ?? reading.Unit,
         Timestamp: reading.Timestamp,
@@ -466,6 +458,16 @@ export class MapScene {
 
     let worstAirQuality = -Infinity;
     let worstAirQualityLocation = "";
+
+    const variableCounts = new Map<string, number>();
+
+    for (const sensor of this.sensorCache) {
+      for (const key of Object.keys(sensor.values)) {
+        variableCounts.set(key, (variableCounts.get(key) ?? 0) + 1);
+      }
+    }
+
+    console.table([...variableCounts.entries()].sort());
 
     for (const sensor of this.sensorCache) {
       const values = sensor.values;
@@ -592,9 +594,9 @@ export class MapScene {
     const now = new Date();
 
     this.dashboard = {
-      monitoredSensors: this.sensorCache.length,
+      totalSensors: this.sensorCache.length,
 
-      onlineSensors: this.sensorCache.filter(
+      monitoredSensors: this.sensorCache.filter(
         (s) => Object.keys(s.values).length > 0,
       ).length,
 

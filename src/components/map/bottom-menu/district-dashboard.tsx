@@ -67,10 +67,10 @@ export const DistrictDashboard: FC<{
           <Grid container spacing={2} sx={{ mt: 1 }}>
             <Grid item xs={2}>
               <Paper sx={{ p: 2 }}>
-                <Typography variant="subtitle2">Monitored Sensors</Typography>
+                <Typography variant="subtitle2">Total Sensors</Typography>
 
                 <Typography variant="h5">
-                  {dashboard?.monitoredSensors ?? "--"}
+                  {dashboard?.totalSensors ?? "--"}
                 </Typography>
 
                 <Typography variant="caption">
@@ -81,7 +81,7 @@ export const DistrictDashboard: FC<{
 
             <Grid item xs={2}>
               <Paper sx={{ p: 2 }}>
-                <Typography variant="subtitle2">Sensor Health</Typography>
+                <Typography variant="subtitle2">Monitored Sensors</Typography>
 
                 <Typography
                   variant="h5"
@@ -97,7 +97,7 @@ export const DistrictDashboard: FC<{
                 </Typography>
 
                 <Typography variant="caption">
-                  {dashboard?.onlineSensors ?? "--"} online
+                  {dashboard?.monitoredSensors ?? "--"} / {dashboard?.totalSensors ?? "--"} monitored
                 </Typography>
               </Paper>
             </Grid>
@@ -111,8 +111,8 @@ export const DistrictDashboard: FC<{
                 </Typography>
 
                 <Typography variant="caption">
-                  Min {format(dashboard?.minTemperature)}° / Max{" "}
-                  {format(dashboard?.maxTemperature)}°
+                  Min {format(dashboard?.minTemperature)}°C / Max{" "}
+                  {format(dashboard?.maxTemperature)}°C
                 </Typography>
               </Paper>
             </Grid>

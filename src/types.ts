@@ -190,8 +190,8 @@ export interface DistrictAlert {
 }
 
 export interface DistrictDashboard {
+  totalSensors: number;
   monitoredSensors: number;
-  onlineSensors: number;
   sensorHealth: number;
 
   avgTemperature: number;
