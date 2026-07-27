@@ -1,23 +1,10 @@
-//import * as MAPBOX from "mapbox-gl";
-//import type { LayerDefinition } from "../../../types";
-
-const API = "https://corsproxy.io/?https://api.v2.urbanobservatory.ac.uk";
+import mapboxgl from "mapbox-gl";
 
 export const sensorLayer = {
   id: "sensors",
   label: "Sensors",
   group: "Diagnostics",
   selection: "multi",
-
-  fetch: async () => {
-    const res = await fetch(`${API}/sensors/json?limit=-1`);
-    const json = await res.json();
-
-    console.log("sensor data", json);
-
-    //return json.sensors || json.Sensors || [];
-    return json.Sensors;
-  },
 
   add: (map: mapboxgl.Map, sensors: any[]) => {
     console.log("RAW SENSOR DATA:", sensors.length);
@@ -70,6 +57,28 @@ export const sensorLayer = {
         "circle-radius": 4,
         "circle-color": "#ff0000",
       },
+    });
+
+    //---------------------------------------
+    // Popup
+    //---------------------------------------
+
+    map.on("click", "sensor-layer", (e) => {
+      const feature = e.features?.[0];
+      if (!feature) return;
+
+      const coordinates = (feature.geometry as GeoJSON.Point).coordinates as [
+        number,
+        number,
+      ];
+
+      new mapboxgl.Popup()
+        .setLngLat(coordinates)
+        .setHTML(
+          `
+          <strong>${feature.properties?.name}</strong><br/>`,
+        )
+        .addTo(map);
     });
 
     // zoom to sensors (debug)

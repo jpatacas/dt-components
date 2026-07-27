@@ -1,61 +1,23 @@
+import mapboxgl from "mapbox-gl";
+import type { UrbanSensor } from "../../../types";
+
 export const pm25Layer = {
   id: "pm25",
   label: "PM2.5",
   group: "Diagnostic",
   selection: "multiple" as const,
 
-  fetch: async () => {
-    const base = "https://corsproxy.io/?https://api.v2.urbanobservatory.ac.uk";
-
-    // 1. locations
-    const sensorsRes = await fetch(`${base}/sensors/json?limit=-1`);
-    const sensorsJson = await sensorsRes.json();
-
-    // 2. readings
-    const dataRes = await fetch(`${base}/sensors/data/json`);
-    const dataJson = await dataRes.json();
-
-    const sensors = sensorsJson.Sensors;
-    const readings = dataJson.Readings;
-
-    console.log("Sensors:", sensors.length);
-    console.log("Readings:", readings.length);
-
-    // group readings by sensor
-    const readingsMap = new Map<string, any>();
-
-    readings.forEach((r: any) => {
-      // filter ONLY air quality (IMPORTANT)
-      if (!["PM2.5"].includes(r.Variable)) return;
-
-      // keep latest (or overwrite)
-      readingsMap.set(r.Sensor_Name, r);
-    });
-
-    // merge
-    const merged = sensors.map((s: any) => {
-      const reading = readingsMap.get(s.Sensor_Name);
-
-      return {
-        ...s,
-        value: reading?.Value,
-        variable: reading?.Variable,
-      };
-    });
-
-    console.log("PM 2.5 Merged sensors:", merged.length);
-
-    return merged;
-  },
-
-  add: (map: mapboxgl.Map, sensors: any[]) => {
+  add: (map: mapboxgl.Map, sensors: UrbanSensor[]) => {
     const features = sensors
-      .map((s) => {
-        const lng = s.Sensor_Centroid_Longitude;
-        const lat = s.Sensor_Centroid_Latitude;
-        const value = s.value;
+      .map((sensor) => {
+        const pm25 = sensor.values["PM2.5"];
 
-        if (!lng || !lat || value == null) return null;
+        if (!pm25) return null;
+
+        const lng = sensor.Sensor_Centroid_Longitude;
+        const lat = sensor.Sensor_Centroid_Latitude;
+
+        if (lng == null || lat == null) return null;
 
         return {
           type: "Feature",
@@ -64,8 +26,10 @@ export const pm25Layer = {
             coordinates: [lng, lat],
           },
           properties: {
-            value,
-            variable: s.variable,
+            name: sensor.Sensor_Name,
+            value: pm25.Value,
+            unit: pm25.Unit ?? "ppm",
+            variable: "PM2.5",
           },
         };
       })
@@ -73,14 +37,21 @@ export const pm25Layer = {
 
     console.log("PM 2.5 Heatmap features:", features.length);
 
-    const geojson = {
-      type: "FeatureCollection",
-      features,
-    };
+    if (map.getSource("pm25")) {
+      (map.getSource("pm25") as mapboxgl.GeoJSONSource).setData({
+        type: "FeatureCollection",
+        features,
+      });
+
+      return;
+    }
 
     map.addSource("pm25", {
       type: "geojson",
-      data: geojson,
+      data: {
+        type: "FeatureCollection",
+        features,
+      },
     });
 
     map.addLayer({
@@ -93,13 +64,20 @@ export const pm25Layer = {
           "interpolate",
           ["linear"],
           ["get", "value"],
-          0,
-          0,
-          100,
-          1,
+            0,
+            0,
+
+            25,
+            0.3,
+
+            50,
+            0.6,
+
+            100,
+            1,
         ],
 
-        "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 0, 1, 15, 4],
+        "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 0, 1, 15, 5],
 
         "heatmap-color": [
           "interpolate",
@@ -119,18 +97,109 @@ export const pm25Layer = {
           "red",
         ],
 
-        "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 0, 5, 15, 40],
+        "heatmap-radius": ["interpolate", ["linear"], ["zoom"],             0,
+            120,
+
+            8,
+            110,
+
+            12,
+            90,
+
+            15,
+            60,],
 
         "heatmap-opacity": 0.8,
       },
     });
-    map.flyTo({
-      center: features[0]?.geometry.coordinates,
-      zoom: 12,
+
+    //---------------------------------------
+    // Sensor points
+    //---------------------------------------
+
+    map.addLayer({
+      id: "pm25-points",
+      type: "circle",
+      source: "pm25",
+      paint: {
+        "circle-radius": [
+          "interpolate",
+          ["linear"],
+          ["zoom"],
+          0,
+          8,
+          10,
+          10,
+          15,
+          12,
+        ],
+
+        "circle-color": [
+          "interpolate",
+          ["linear"],
+          ["get", "value"],
+          40,
+          "#4575b4",
+          65,
+          "#e0f3f8",
+          90,
+          "#d73027",
+        ],
+
+        "circle-stroke-width": 1.5,
+        "circle-stroke-color": "#222",
+      },
     });
+
+    //---------------------------------------
+    // Popup
+    //---------------------------------------
+
+    map.on("click", "pm25-points", (e) => {
+      const feature = e.features?.[0];
+      if (!feature) return;
+
+      const coordinates = (feature.geometry as GeoJSON.Point).coordinates as [
+        number,
+        number,
+      ];
+
+      new mapboxgl.Popup()
+        .setLngLat(coordinates)
+        .setHTML(
+          `
+          <strong>${feature.properties?.name}</strong><br/>
+          PM 2.5: ${Number(feature.properties?.value).toFixed(1)}μg/m³
+        `,
+        )
+        .addTo(map);
+    });
+
+    map.on("mouseenter", "pm25-points", () => {
+      map.getCanvas().style.cursor = "pointer";
+    });
+
+    map.on("mouseleave", "pm25-points", () => {
+      map.getCanvas().style.cursor = "";
+    });
+
+    //---------------------------------------
+    // Fly to first sensor
+    //---------------------------------------
+
+    if (features.length > 0) {
+      map.flyTo({
+        center: features[0].geometry.coordinates,
+        zoom: 13,
+        speed: 0.8,
+      });
+    }
   },
 
   remove: (map: mapboxgl.Map) => {
+    if (map.getLayer("pm25-points")) 
+      map.removeLayer("pm25-points");
+
     if (map.getLayer("pm25-heatmap")) {
       map.removeLayer("pm25-heatmap");
     }

@@ -1,4 +1,5 @@
 import mapboxgl from "mapbox-gl";
+import type { UrbanSensor } from "../../../types";
 
 export const temperatureLayer = {
   id: "temperature",
@@ -6,59 +7,18 @@ export const temperatureLayer = {
   group: "Diagnostic",
   selection: "multiple" as const,
 
-  fetch: async () => {
-    const base = "https://corsproxy.io/?https://api.v2.urbanobservatory.ac.uk";
-
-    // 1. locations
-    const sensorsRes = await fetch(`${base}/sensors/json?limit=-1`);
-    const sensorsJson = await sensorsRes.json();
-
-    // 2. readings
-    const dataRes = await fetch(`${base}/sensors/data/json`);
-    const dataJson = await dataRes.json();
-
-    const sensors = sensorsJson.Sensors;
-    const readings = dataJson.Readings;
-
-    console.log("Sensors:", sensors.length);
-    console.log("Readings:", readings.length);
-
-    // group readings by sensor
-    const readingsMap = new Map<string, any>();
-
-    readings.forEach((r: any) => {
-      // filter ONLY air quality (IMPORTANT)
-      if (!["Temperature"].includes(r.Variable)) return;
-
-      // keep latest (or overwrite)
-      readingsMap.set(r.Sensor_Name, r);
-    });
-
-    // merge
-    const merged = sensors.map((s: any) => {
-      const reading = readingsMap.get(s.Sensor_Name);
-
-      return {
-        ...s,
-        value: reading?.Value,
-        variable: reading?.Variable,
-      };
-    });
-
-    console.log("Temperature Merged sensors:", merged.length);
-
-    return merged;
-  },
-
-  add: (map: mapboxgl.Map, sensors: any[]) => {
+  add: (map: mapboxgl.Map, sensors: UrbanSensor[]) => {
     const features = sensors
-      .map((s) => {
-        const lng = s.Sensor_Centroid_Longitude;
-        const lat = s.Sensor_Centroid_Latitude;
-        const value = s.value;
-        console.log(value);
+      .map((sensor) => {
 
-        if (!lng || !lat || value == null) return null;
+        const temperature = sensor.values["Temperature"];
+
+        if (!temperature) return null;
+
+        const lng = sensor.Sensor_Centroid_Longitude;
+        const lat = sensor.Sensor_Centroid_Latitude;
+
+        if (lng == null || lat == null) return null;
 
         return {
           type: "Feature",
@@ -67,8 +27,10 @@ export const temperatureLayer = {
             coordinates: [lng, lat],
           },
           properties: {
-            value,
-            variable: s.variable,
+            name: sensor.Sensor_Name,
+            value: temperature.Value,
+            unit: temperature.Unit ?? "C",
+            variable: "Temperature",
           },
         };
       })
@@ -76,14 +38,21 @@ export const temperatureLayer = {
 
     console.log("Temperature Heatmap features:", features.length);
 
-    const geojson = {
-      type: "FeatureCollection",
-      features,
-    };
+    if (map.getSource("temperature")) {
+      (map.getSource("temperature") as mapboxgl.GeoJSONSource).setData({
+        type: "FeatureCollection",
+        features,
+      });
+
+      return;
+    }
 
     map.addSource("temperature", {
       type: "geojson",
-      data: geojson,
+      data: {
+        type: "FeatureCollection",
+        features,
+      },
     });
 
     // HEATMAP (smoother + wider)
@@ -182,11 +151,19 @@ export const temperatureLayer = {
       const feature = e.features?.[0];
       if (!feature) return;
 
-      const value = feature.properties?.value;
+      const coordinates = (feature.geometry as GeoJSON.Point).coordinates as [
+        number,
+        number,
+      ];
 
       new mapboxgl.Popup()
-        .setLngLat(feature.geometry.coordinates as [number, number])
-        .setHTML(`<strong>Temperature:</strong> ${value.toFixed(1)}°C`)
+        .setLngLat(coordinates)
+        .setHTML(
+          `
+          <strong>${feature.properties?.name}</strong><br/>
+          Temperature: ${Number(feature.properties?.value).toFixed(1)}°C
+        `,
+        )
         .addTo(map);
     });
 
