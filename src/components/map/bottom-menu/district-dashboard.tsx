@@ -2,6 +2,7 @@ import { type FC } from "react";
 import { useAppContext } from "../../../middleware/context-provider";
 import {
   Box,
+  Button,
   Chip,
   Grid,
   IconButton,
@@ -24,7 +25,7 @@ export const DistrictDashboard: FC<{
 }> = ({ open, toggleDrawer }) => {
   const Drawer = getBottomDrawer(500);
 
-  const [state] = useAppContext();
+  const [state, dispatch] = useAppContext();
 
   const dashboard = state.districtDashboard;
 
@@ -97,7 +98,8 @@ export const DistrictDashboard: FC<{
                 </Typography>
 
                 <Typography variant="caption">
-                  {dashboard?.monitoredSensors ?? "--"} / {dashboard?.totalSensors ?? "--"} monitored
+                  {dashboard?.monitoredSensors ?? "--"} /{" "}
+                  {dashboard?.totalSensors ?? "--"} monitored
                 </Typography>
               </Paper>
             </Grid>
@@ -168,9 +170,22 @@ export const DistrictDashboard: FC<{
               <Paper sx={{ p: 2 }}>
                 <Typography variant="subtitle2">Hottest Location</Typography>
 
-                <Typography variant="h6">
-                  {dashboard?.hottestLocationAddress ?? "--"}
-                </Typography>
+                <Button
+                  size="small"
+                  onClick={() =>
+                    dispatch({
+                      type: "FLY_TO_LOCATION",
+                      payload: {
+                        ...dashboard?.hottestLocation!,
+                        title: "Hottest location",
+                      },
+                    })
+                  }
+                >
+                  <Typography variant="h7">
+                    {dashboard?.hottestLocationAddress ?? "--"}
+                  </Typography>
+                </Button>
               </Paper>
             </Grid>
 
@@ -178,9 +193,22 @@ export const DistrictDashboard: FC<{
               <Paper sx={{ p: 2 }}>
                 <Typography variant="subtitle2">Coldest Location</Typography>
 
-                <Typography variant="h6">
-                  {dashboard?.coldestLocationAddress ?? "--"}
-                </Typography>
+                <Button
+                  size="small"
+                  onClick={() =>
+                    dispatch({
+                      type: "FLY_TO_LOCATION",
+                      payload: {
+                        ...dashboard?.coldestLocation!,
+                        title: "Coldest location",
+                      },
+                    })
+                  }
+                >
+                  <Typography variant="h7">
+                    {dashboard?.coldestLocationAddress ?? "--"}
+                  </Typography>
+                </Button>
               </Paper>
             </Grid>
 
@@ -190,9 +218,22 @@ export const DistrictDashboard: FC<{
                   Worst Air Quality Location
                 </Typography>
 
-                <Typography variant="h6">
-                  {dashboard?.worstAirQualityLocationAddress ?? "--"}
-                </Typography>
+                <Button
+                  size="small"
+                  onClick={() =>
+                    dispatch({
+                      type: "FLY_TO_LOCATION",
+                      payload: {
+                        ...dashboard?.worstAirQualityLocation!,
+                        title: "Worst Air Quality location",
+                      },
+                    })
+                  }
+                >
+                  <Typography variant="h7">
+                    {dashboard?.worstAirQualityLocationAddress ?? "--"}
+                  </Typography>
+                </Button>
               </Paper>
             </Grid>
 

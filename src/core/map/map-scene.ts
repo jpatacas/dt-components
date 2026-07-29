@@ -1,4 +1,4 @@
-import * as MAPBOX from "mapbox-gl";
+import mapboxgl, * as MAPBOX from "mapbox-gl";
 import { MAPBOX_KEY } from "../../config";
 import type {
   Building,
@@ -693,6 +693,24 @@ export class MapScene {
       return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
     } catch {
       return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+    }
+  }
+
+  public flyToLocation(lat: number, lng: number, title?: string) {
+    this.map.flyTo({
+      center: [lng, lat],
+      zoom: 17,
+      speed: 1.2,
+      curve: 1.4,
+      essential: true,
+    });
+
+    if (title) {
+      // new mapboxgl.Popup()
+      //   .setLngLat([lng, lat])
+      //   .setHTML(`<strong>${title}</strong>`)
+      //   .addTo(this.map);
+      console.log(title);
     }
   }
 }

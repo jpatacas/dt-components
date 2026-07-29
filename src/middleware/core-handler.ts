@@ -61,4 +61,8 @@ export const executeCore = async (action: Action, events: Events) => {
   if (action.type === "SELECT_SENSOR") {
     return buildingHandler.selectSensor(action.payload);
   }
+  if (action.type === "FLY_TO_LOCATION") {
+    const { lat, lng, title } = action.payload;
+    return mapHandler.flyToLocation(lat, lng, title);
+  }
 };

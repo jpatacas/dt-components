@@ -30,4 +30,9 @@ export const mapHandler = {
       await this.viewer.updateLayers(layerIds);
     }
   },
+  async flyToLocation(lat: number, lng: number, title? : string) {
+    if (this.viewer) {
+      this.viewer.flyToLocation(lat, lng, title);
+    }
+  },
 };
