@@ -169,7 +169,7 @@ export const DistrictDashboard: FC<{
                 <Typography variant="subtitle2">Hottest Location</Typography>
 
                 <Typography variant="h6">
-                  {dashboard?.hottestLocation ?? "--"}
+                  {dashboard?.hottestLocationAddress ?? "--"}
                 </Typography>
               </Paper>
             </Grid>
@@ -179,7 +179,7 @@ export const DistrictDashboard: FC<{
                 <Typography variant="subtitle2">Coldest Location</Typography>
 
                 <Typography variant="h6">
-                  {dashboard?.coldestLocation ?? "--"}
+                  {dashboard?.coldestLocationAddress ?? "--"}
                 </Typography>
               </Paper>
             </Grid>
@@ -191,7 +191,7 @@ export const DistrictDashboard: FC<{
                 </Typography>
 
                 <Typography variant="h6">
-                  {dashboard?.worstAirQualityLocation ?? "--"}
+                  {dashboard?.worstAirQualityLocationAddress ?? "--"}
                 </Typography>
               </Paper>
             </Grid>

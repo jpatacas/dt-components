@@ -210,9 +210,23 @@ export interface DistrictDashboard {
   minPM25: number;
   maxPM25: number;
 
-  hottestLocation?: string;
-  coldestLocation?: string;
-  worstAirQualityLocation?: string;
+  hottestLocation?: {
+    lat: number;
+    lng: number;
+  };
+  hottestLocationAddress?: string;
+
+  coldestLocation?: {
+    lat: number;
+    lng: number;
+  };
+  coldestLocationAddress?: string;
+
+  worstAirQualityLocation?: {
+    lat: number;
+    lng: number;
+  };
+  worstAirQualityLocationAddress?: string;
 
   alerts: number;
   alertList: DistrictAlert[];

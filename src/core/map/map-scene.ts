@@ -78,7 +78,7 @@ export class MapScene {
 
       await this.loadUrbanObservatoryData();
 
-      this.buildDistrictDashboard();
+      await this.buildDistrictDashboard();
 
       this.resolveReady();
     });
@@ -400,7 +400,6 @@ export class MapScene {
     const readingMap = new Map<string, Record<string, any>>();
 
     for (const reading of readings) {
-
       let sensorValues = readingMap.get(reading.Sensor_Name);
 
       if (!sensorValues) {
@@ -442,7 +441,7 @@ export class MapScene {
     console.log(`Loaded ${this.sensorCache.length} Urban Observatory sensors`);
   }
 
-  private buildDistrictDashboard() {
+  private async buildDistrictDashboard() {
     const temperatures: number[] = [];
     const humidities: number[] = [];
     const no2: number[] = [];
@@ -453,11 +452,11 @@ export class MapScene {
     let hottest = -Infinity;
     let coldest = Infinity;
 
-    let hottestLocation = "";
-    let coldestLocation = "";
+    let hottestLocation: { lat: number; lng: number } | undefined;
+    let coldestLocation: { lat: number; lng: number } | undefined;
 
     let worstAirQuality = -Infinity;
-    let worstAirQualityLocation = "";
+    let worstAirQualityLocation: { lat: number; lng: number } | undefined;
 
     const variableCounts = new Map<string, number>();
 
@@ -483,12 +482,18 @@ export class MapScene {
 
         if (t > hottest) {
           hottest = t;
-          hottestLocation = `${sensor.Sensor_Centroid_Latitude.toFixed(5)}, ${sensor.Sensor_Centroid_Longitude.toFixed(5)}`;
+          hottestLocation = {
+            lat: sensor.Sensor_Centroid_Latitude,
+            lng: sensor.Sensor_Centroid_Longitude,
+          };
         }
 
         if (t < coldest) {
           coldest = t;
-          coldestLocation = `${sensor.Sensor_Centroid_Latitude.toFixed(5)}, ${sensor.Sensor_Centroid_Longitude.toFixed(5)}`;
+          coldestLocation = {
+            lat: sensor.Sensor_Centroid_Latitude,
+            lng: sensor.Sensor_Centroid_Longitude,
+          };
         }
 
         if (t > 30) {
@@ -568,7 +573,10 @@ export class MapScene {
         if (p > worstAirQuality) {
           worstAirQuality = p;
 
-          worstAirQualityLocation = `${sensor.Sensor_Centroid_Latitude.toFixed(5)}, ${sensor.Sensor_Centroid_Longitude.toFixed(5)}`;
+          worstAirQualityLocation = {
+            lat: sensor.Sensor_Centroid_Latitude,
+            lng: sensor.Sensor_Centroid_Longitude,
+          };
         }
 
         if (p > 25) {
@@ -592,6 +600,27 @@ export class MapScene {
       v.length ? v.reduce((a, b) => a + b, 0) / v.length : 0;
 
     const now = new Date();
+
+    const [
+      hottestLocationAddress,
+      coldestLocationAddress,
+      worstAirQualityLocationAddress,
+    ] = await Promise.all([
+      hottestLocation
+        ? this.reverseGeocode(hottestLocation.lat, hottestLocation.lng)
+        : Promise.resolve(""),
+
+      coldestLocation
+        ? this.reverseGeocode(coldestLocation.lat, coldestLocation.lng)
+        : Promise.resolve(""),
+
+      worstAirQualityLocation
+        ? this.reverseGeocode(
+            worstAirQualityLocation.lat,
+            worstAirQualityLocation.lng,
+          )
+        : Promise.resolve(""),
+    ]);
 
     this.dashboard = {
       totalSensors: this.sensorCache.length,
@@ -625,8 +654,11 @@ export class MapScene {
       maxPM25: pm25.length ? Math.max(...pm25) : 0,
 
       hottestLocation,
+      hottestLocationAddress,
       coldestLocation,
+      coldestLocationAddress,
       worstAirQualityLocation,
+      worstAirQualityLocationAddress,
 
       alerts: alertList.length,
       alertList,
@@ -644,5 +676,23 @@ export class MapScene {
       type: "UPDATE_DISTRICT_DASHBOARD",
       payload: this.dashboard,
     });
+  }
+
+  private async reverseGeocode(lat: number, lng: number): Promise<string> {
+    try {
+      const response = await fetch(
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?types=address,poi,place&limit=1&access_token=${MAPBOX_KEY}`,
+      );
+
+      const json = await response.json();
+
+      if (json.features?.length) {
+        return json.features[0].place_name;
+      }
+
+      return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+    } catch {
+      return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+    }
   }
 }
