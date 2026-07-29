@@ -1,25 +1,17 @@
-import { type FC, useRef, useEffect } from "react";
+import {type FC, useRef, useEffect} from "react"
 import { useAppContext } from "../../../middleware/context-provider";
 
 export const BuildingViewport: FC = () => {
-  const [{ user, building }, dispatch] = useAppContext();
-  const containerRef = useRef(null);
 
-  useEffect(() => {
-    const container = containerRef.current;
-    if (container && user) {
-      dispatch({ type: "START_BUILDING", payload: { container, building } });
-    }
-  }, []);
+    const [{user, building}, dispatch] = useAppContext();
+    const containerRef = useRef(null)
 
-  // return <div className="full-screen" ref = {containerRef}></div>
-  return (
-    <div
-      ref={containerRef}
-      style={{
-        width: "100%",
-        height: "100%",
-      }}
-    />
-  );
-};
+    useEffect( () => {
+        const container = containerRef.current
+        if (container && user) {
+            dispatch({type:"START_BUILDING", payload: {container, building}})
+        }
+    }, [])
+
+    return <div className="full-screen" ref = {containerRef}></div>
+}

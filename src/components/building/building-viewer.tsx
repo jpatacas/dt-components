@@ -1,4 +1,4 @@
-import { type FC, useEffect, useState } from "react"; //to define a component
+import { type FC, useEffect, useState } from "react";
 import { Box, Button, CssBaseline } from "@mui/material";
 import { useAppContext } from "../../middleware/context-provider";
 import { Navigate } from "react-router-dom";
@@ -91,7 +91,7 @@ export const BuildingViewer: FC = () => {
   const DrawerHeader = getDrawerHeader();
 
   return (
-    <Box sx={{ display: "flex", height: "100vh" }}>
+    <Box sx={{ display: "flex" }}>
       <CssBaseline />
 
       <NavBar width={width} open={sideOpen} onOpen={() => toggleDrawer(true)} />
@@ -106,17 +106,7 @@ export const BuildingViewer: FC = () => {
         setSelectedLayers={setSelectedLayers}
       />
 
-      <Box
-        component="main"
-        sx={{
-          flexGrow: 1,
-          display: "flex",
-          flexDirection: "column",
-          height: "100%",
-          overflow: "hidden",
-          p: 0,
-        }}
-      >
+      <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
         <DrawerHeader />
 
         <BuildingFrontMenu
@@ -124,9 +114,8 @@ export const BuildingViewer: FC = () => {
           open={frontOpen}
           mode={frontMenu}
         />
-        <Box sx={{ flexGrow: 1, position: "relative", minHeight: 0 }}>
-          <BuildingViewport />
-        </Box>
+
+        <BuildingViewport />
       </Box>
 
       <BuildingDashboard
@@ -146,7 +135,7 @@ export const BuildingViewer: FC = () => {
           }}
           onClick={toggleBottomDrawer}
         >
-          Show Building Dashboard
+          Show Building KPIs
         </Button>
       )}
     </Box>
