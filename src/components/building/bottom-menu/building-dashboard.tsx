@@ -254,6 +254,7 @@ export const BuildingDashboard: FC<{
               <Table stickyHeader size="small">
                 <TableHead>
                   <TableRow>
+
                     <TableCell>Room</TableCell>
                     <TableCell>Metric</TableCell>
                     <TableCell align="right">Value</TableCell>
@@ -265,7 +266,16 @@ export const BuildingDashboard: FC<{
                 <TableBody>
                   {dashboard?.alertList?.length ? (
                     dashboard.alertList.map((alert, index) => (
-                      <TableRow key={index}>
+                      <TableRow key={index} onClick=
+                    {() =>
+                      dispatch({
+                        type: "SELECT_ROOM",
+                        payload: {
+                          modelId: alert.modelId!,
+                          localId: alert.localId!,
+                        },
+                      })
+                    }>
                         <TableCell>{alert.room}</TableCell>
 
                         <TableCell>{alert.metric}</TableCell>
