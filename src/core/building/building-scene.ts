@@ -6,6 +6,7 @@ import type {
   RoomInfo,
   BuildingDashboard,
   BuildingAlert,
+  SensorInfo,
 } from "../../types";
 import workerUrl from "@thatopen/fragments/dist/Worker/worker.mjs?worker&url";
 import { localModelStore } from "../db/local-model-store";
@@ -42,6 +43,8 @@ export class BuildingScene {
 
   private roomLookup = new Map<string, RoomInfo>();
 
+  private roomSensors = new Map<string, SensorInfo[]>();
+
   private dashboard?: BuildingDashboard;
 
   private layerCategories = new Map<string, Set<string>>();
@@ -62,7 +65,8 @@ export class BuildingScene {
   }
 
   public getSensorLayer(metric: string, mapper: (value: string) => string) {
-    return Array.from(this.roomLookup.entries()).flatMap(
+    return Array.from(this.roomSensors.entries()).flatMap(
+      //return Array.from(this.roomLookup.entries()).flatMap(
       ([spaceName, sensors]) => {
         const sensor = sensors.find((s) =>
           s.name.toLowerCase().includes(metric.toLowerCase()),
@@ -374,10 +378,12 @@ export class BuildingScene {
     //Hider for building layers
     this.hider = this.components.get(OBC.Hider);
 
+    this.lookupIFCSpaces();
+
     //room lookup for UO - USB only! - need to improve this
     if (this.building.name === "USB") {
-      await this.buildRoomLookup();
-      console.log(this.roomLookup);
+      await this.buildBuildingDashboard();
+      //console.log("room lookup: ", this.roomLookup);
     }
   }
 
@@ -614,7 +620,8 @@ export class BuildingScene {
       this.selectedRoom = roomNumber;
     }
 
-    const sensors = this.roomLookup.get(roomNumber) ?? [];
+    const sensors = this.roomSensors.get(roomNumber) ?? [];
+    //const sensors = this.roomLookup.get(roomNumber) ?? [];
 
     if (sensors.length > 0) {
       formatted.push(
@@ -687,15 +694,6 @@ export class BuildingScene {
     return this.allItemsCache.get(model.modelId)!;
   }
 
-  public async showOnlySpaces2() {
-    const spaces = await this.classifier.find({
-      Categories: ["IFCSPACE"],
-    });
-
-    console.log("Isolating IFCSPACES:", spaces);
-    await this.hider.isolate(spaces);
-  }
-
   public async showArch() {
     const architectural = await this.classifier.find({
       Categories: [
@@ -744,6 +742,52 @@ export class BuildingScene {
     await this.hider.isolate(mep);
   }
 
+  public async lookupIFCSpaces() {
+    const modelIdMap: OBC.ModelIdMap = {};
+
+    for (const [, model] of this.fragments.list) {
+      const items = await model.getItemsOfCategories([/\bIFCSPACE\b/]);
+
+      const spaceIds = Object.values(items).flat();
+
+      if (spaceIds.length === 0) continue;
+
+      modelIdMap[model.modelId] = new Set(spaceIds);
+    }
+
+    for (const [modelId, ids] of Object.entries(modelIdMap)) {
+      const model = this.fragments.list.get(modelId);
+
+      if (!model) continue;
+
+      for (const localId of ids) {
+        const [props] = await model.getItemsData([localId]);
+
+        const roomName = props?.Name?.value;
+
+        if (!roomName) continue;
+
+        let room = this.roomLookup.get(roomName);
+
+        if (!room) {
+          room = {
+            name: roomName,
+            localId: Number(localId),
+            modelId: modelId,
+          };
+
+          this.roomLookup.set(roomName, room);
+        }
+
+        room.modelId = modelId;
+        room.localId = Number(localId);
+        room.longName = props?.LongName?.value;
+      }
+    }
+
+    console.log("lookupIfcSpaces", this.roomLookup);
+  }
+
   public async showOnlySpaces() {
     const modelIdMap: OBC.ModelIdMap = {};
 
@@ -757,9 +801,31 @@ export class BuildingScene {
       modelIdMap[model.modelId] = new Set(spaceIds);
     }
 
-    console.log("Isolating IFCSPACES:", modelIdMap);
+    for (const [modelId, ids] of Object.entries(modelIdMap)) {
+      const model = this.fragments.list.get(modelId);
+
+      if (!model) continue;
+
+      for (const localId of ids) {
+        const [props] = await model.getItemsData([localId]);
+
+        console.log(localId);
+        console.log(props?.Name?.value);
+      }
+    }
+
+    //console.log("Isolating IFCSPACES:", modelIdMap);
 
     await this.hider.isolate(modelIdMap);
+  }
+
+  public async showOnlySpaces2() {
+    const spaces = await this.classifier.find({
+      Categories: ["IFCSPACE"],
+    });
+
+    console.log("Isolating IFCSPACES:", spaces);
+    await this.hider.isolate(spaces);
   }
 
   public async showAll() {
@@ -833,6 +899,7 @@ export class BuildingScene {
       result[model.modelId] = new Set(ids);
     }
 
+    console.log(result);
     return result;
   }
 
@@ -927,14 +994,15 @@ export class BuildingScene {
   }
 
   // query Urban Observatory and build room lookup
-  private async buildRoomLookup() {
+  private async buildBuildingDashboard() {
     const response = await fetch(
-      "https://api.usb.urbanobservatory.ac.uk/api/v2.0a/sensors/entity?pageSize=1000",
+      "https://api.usb.urbanobservatory.ac.uk/api/v2.0a/sensors/entity?pageSize=100",
     );
 
     const data = await response.json();
 
-    this.roomLookup.clear();
+    //this.roomLookup.clear();
+    this.roomSensors.clear();
 
     const temperatures: number[] = [];
     const humidities: number[] = [];
@@ -1001,6 +1069,7 @@ export class BuildingScene {
           // Executive KPI statistics
           //--------------------------------------------------
 
+          const room = this.roomLookup.get(roomNumber);
           const numeric = Number(value);
 
           if (Number.isNaN(numeric)) continue;
@@ -1015,6 +1084,8 @@ export class BuildingScene {
               if (numeric < 18) {
                 alertList.push({
                   room: roomNumber,
+                  modelId: room?.modelId,
+                  localId: room?.localId,
                   metric: "Temperature",
                   value: numeric,
                   unit: ts.unit?.name,
@@ -1026,6 +1097,8 @@ export class BuildingScene {
               if (numeric > 26) {
                 alertList.push({
                   room: roomNumber,
+                  modelId: room?.modelId,
+                  localId: room?.localId,
                   metric: "Temperature",
                   value: numeric,
                   unit: ts.unit?.name,
@@ -1045,6 +1118,8 @@ export class BuildingScene {
               if (numeric < 30) {
                 alertList.push({
                   room: roomNumber,
+                  modelId: room?.modelId,
+                  localId: room?.localId,
                   metric: "Humidity",
                   value: numeric,
                   unit: "%",
@@ -1056,6 +1131,8 @@ export class BuildingScene {
               if (numeric > 70) {
                 alertList.push({
                   room: roomNumber,
+                  modelId: room?.modelId,
+                  localId: room?.localId,
                   metric: "Humidity",
                   value: numeric,
                   unit: "%",
@@ -1074,6 +1151,8 @@ export class BuildingScene {
               if (numeric > 1000) {
                 alertList.push({
                   room: roomNumber,
+                  modelId: room?.modelId,
+                  localId: room?.localId,
                   metric: "CO₂",
                   value: numeric,
                   unit: "ppm",
@@ -1094,7 +1173,8 @@ export class BuildingScene {
         }
       }
 
-      this.roomLookup.set(roomNumber, sensors); //need to change this to match with RoomInfo interface
+      this.roomSensors.set(roomNumber, sensors);
+      //this.roomLookup.set(roomNumber, sensors); //need to change this to match with RoomInfo interface
     }
 
     const average = (values: number[]) =>
@@ -1111,9 +1191,14 @@ export class BuildingScene {
         ? (occupiedRooms / monitoredRooms) * 100
         : 0;
 
+    // const coveragePercentage =
+    //   this.roomLookup.size > 0
+    //     ? (monitoredRooms / this.roomLookup.size) * 100
+    //     : 0;
+
     const coveragePercentage =
-      this.roomLookup.size > 0
-        ? (monitoredRooms / this.roomLookup.size) * 100
+      this.roomSensors.size > 0
+        ? (monitoredRooms / this.roomSensors.size) * 100
         : 0;
 
     const sensorHealth =
@@ -1139,10 +1224,12 @@ export class BuildingScene {
     comfortIndex = Math.max(0, comfortIndex);
 
     this.dashboard = {
-      rooms: this.roomLookup.size,
+      //rooms: this.roomLookup.size,
+      rooms: this.roomSensors.size,
 
       monitoredRooms,
-      totalRooms: this.roomLookup.size,
+      //totalRooms: this.roomLookup.size,
+      totalRooms: this.roomSensors.size,
 
       occupiedRooms,
       unoccupiedRooms,
@@ -1188,7 +1275,8 @@ export class BuildingScene {
       }),
     };
 
-    console.log("Room lookup:", this.roomLookup.size);
+    // console.log("Room lookup:", this.roomLookup);
+    console.log("Room sensors:", this.roomSensors);
     console.log("Dashboard:", this.dashboard);
 
     this.events.trigger({
@@ -1222,6 +1310,72 @@ export class BuildingScene {
         sensor,
         history,
       },
+    });
+  }
+
+  public async selectRoom(modelId: string, localId: number) {
+
+    this.showOnlySpaces2();
+
+    const modelIdMap: OBC.ModelIdMap = {
+      [modelId]: new Set([localId]),
+    };
+
+    await this.highlighter.highlightByID("select", modelIdMap, true);
+
+    //need to repeat this? (from private async select...)
+    // ---- properties logic ----
+    const model = this.fragments.list.get(modelId);
+    if (!model) return;
+
+    const [props] = await model.getItemsData([localId]);
+    //console.log(props._category.value)
+
+    if (!props) {
+      this.events.trigger({
+        type: "UPDATE_PROPERTIES",
+        payload: [],
+      });
+      return;
+    }
+
+    const formatted = Object.entries(props).map(([name, value]: any) => {
+      let finalValue = value;
+
+      if (!finalValue) finalValue = "Unknown";
+      if (finalValue?.value) finalValue = finalValue.value;
+      if (typeof finalValue === "number") finalValue = finalValue.toString();
+
+      return { name, value: finalValue };
+    });
+
+    const roomNumber = props.Name?.value ?? props.Name;
+
+    if (roomNumber !== this.selectedRoom) {
+      this.events.trigger({
+        type: "CLEAR_SENSOR_HISTORY",
+      });
+
+      this.selectedRoom = roomNumber;
+    }
+
+    const sensors = this.roomSensors.get(roomNumber) ?? [];
+    //const sensors = this.roomLookup.get(roomNumber) ?? [];
+
+    if (sensors.length > 0) {
+      formatted.push(
+        { name: "----- SENSOR DATA -----", value: "" },
+        //...sensors,
+        ...sensors.map((sensor) => ({
+          ...sensor,
+          type: "sensor",
+        })),
+      );
+    }
+
+    this.events.trigger({
+      type: "UPDATE_PROPERTIES",
+      payload: formatted,
     });
   }
 }

@@ -104,6 +104,8 @@ export interface BuildingLayerDefinition extends LayerConfig {
 
 export interface BuildingAlert {
   room: string;
+  modelId?: string;
+  localId?: number;
   metric: string;
   value: number;
   unit?: string;
@@ -149,6 +151,7 @@ export interface BuildingDashboard {
   totalSensors: number;
 }
 
+//for IFC Spaces
 export interface RoomInfo {
   modelId: string;
   localId: number;
@@ -167,11 +170,12 @@ export interface RoomInfo {
   light?: number;
 }
 
-export interface SensorValue {
-  value: number;
-  lat: number;
-  lng: number;
-  name?: string;
+//for UO USB building sensors
+export interface SensorInfo {
+  name: string;
+  value: string;
+  unit?: string;
+  timeseriesId: string;
 }
 
 // export interface SensorLocation {
