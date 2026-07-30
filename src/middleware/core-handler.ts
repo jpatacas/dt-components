@@ -65,4 +65,7 @@ export const executeCore = async (action: Action, events: Events) => {
     const { lat, lng, title } = action.payload;
     return mapHandler.flyToLocation(lat, lng, title);
   }
+  if (action.type === "SELECT_ROOM") {
+    return buildingHandler.selectRoom(action.payload);
+}
 };

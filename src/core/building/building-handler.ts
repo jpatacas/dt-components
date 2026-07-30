@@ -17,7 +17,7 @@ export const buildingHandler = {
     this.currentBuilding = building;
     this.viewer = new BuildingScene(container, building, events);
     await this.viewer.initialize();
-    
+
     // reset layers when entering building
     this.viewer.updateLayers([]);
   },
@@ -55,17 +55,15 @@ export const buildingHandler = {
     this.viewer.updateLayers(layerIds);
   },
 
-  async selectSensor(
-  sensor: {
+  async selectSensor(sensor: {
     name: string;
     timeseriesId: string;
     unit?: string;
-  }
-) {
+  }) {
+    await this.viewer?.loadSensorHistory(sensor);
+  },
 
-  await this.viewer?.loadSensorHistory(
-    sensor
-  );
-
-}
+  selectRoom(payload: { modelId: string; localId: number }) {
+    this.viewer?.selectRoom(payload.modelId, payload.localId);
+  },
 };
