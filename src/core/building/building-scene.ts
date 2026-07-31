@@ -39,9 +39,7 @@ export class BuildingScene {
 
   private hider!: OBC.Hider;
 
-  // private roomLookup = new Map<string, { name: string; value: string }[]>();
-
-  private roomLookup = new Map<string, RoomInfo>();
+  private roomLookup = new Map<string, RoomInfo[]>();
 
   private roomSensors = new Map<string, SensorInfo[]>();
 
@@ -556,7 +554,10 @@ export class BuildingScene {
 
     const result = await this.caster.castRay();
 
+    //----------------------------------------------------------
     // Clicked empty space
+    //----------------------------------------------------------
+
     if (!result) {
       this.highlighter.clear("select");
 
@@ -577,20 +578,14 @@ export class BuildingScene {
     const modelId = result.fragments.modelId;
     const localId = result.localId;
 
-    const modelIdMap = {
-      [modelId]: new Set([localId]),
-    };
+    //----------------------------------------------------------
+    // Read IFC properties
+    //----------------------------------------------------------
 
-    //console.log("Selected: ", modelIdMap);
-    // Apply selection
-    this.highlighter.highlight("select", modelIdMap);
-
-    // ---- properties logic ----
     const model = this.fragments.list.get(modelId);
     if (!model) return;
 
     const [props] = await model.getItemsData([localId]);
-    //console.log(props._category.value)
 
     if (!props) {
       this.events.trigger({
@@ -599,6 +594,40 @@ export class BuildingScene {
       });
       return;
     }
+
+    //----------------------------------------------------------
+    // Highlight every IFC space belonging to the same room
+    //----------------------------------------------------------
+
+    const roomName = props?.Name?.value;
+    if (!roomName) return;
+
+    const key = this.normalizeRoomNumber(roomName);
+
+    const rooms = this.roomLookup.get(key) ?? [];
+
+    const modelIdMap: OBC.ModelIdMap = {};
+
+    if (rooms.length > 0) {
+      for (const room of rooms) {
+        if (!modelIdMap[room.modelId]) {
+          modelIdMap[room.modelId] = new Set<number>();
+        }
+
+        modelIdMap[room.modelId].add(room.localId);
+      }
+
+      this.highlighter.highlight("select", modelIdMap);
+    } else {
+      // Fallback if no lookup exists
+      this.highlighter.highlight("select", {
+        [modelId]: new Set([localId]),
+      });
+    }
+
+    //----------------------------------------------------------
+    // IFC properties
+    //----------------------------------------------------------
 
     const formatted = Object.entries(props).map(([name, value]: any) => {
       let finalValue = value;
@@ -610,29 +639,33 @@ export class BuildingScene {
       return { name, value: finalValue };
     });
 
-    const roomNumber = props.Name?.value ?? props.Name;
+    //----------------------------------------------------------
+    // Sensor data
+    //----------------------------------------------------------
 
-    if (roomNumber !== this.selectedRoom) {
+    if (key !== this.selectedRoom) {
       this.events.trigger({
         type: "CLEAR_SENSOR_HISTORY",
       });
 
-      this.selectedRoom = roomNumber;
+      this.selectedRoom = key;
     }
 
-    const sensors = this.roomSensors.get(roomNumber) ?? [];
-    //const sensors = this.roomLookup.get(roomNumber) ?? [];
+    const sensors = this.roomSensors.get(key) ?? [];
 
     if (sensors.length > 0) {
       formatted.push(
         { name: "----- SENSOR DATA -----", value: "" },
-        //...sensors,
         ...sensors.map((sensor) => ({
           ...sensor,
           type: "sensor",
         })),
       );
     }
+
+    //----------------------------------------------------------
+    // Update UI
+    //----------------------------------------------------------
 
     this.events.trigger({
       type: "UPDATE_PROPERTIES",
@@ -743,49 +776,38 @@ export class BuildingScene {
   }
 
   public async lookupIFCSpaces() {
-    const modelIdMap: OBC.ModelIdMap = {};
+    this.roomLookup.clear();
 
     for (const [, model] of this.fragments.list) {
       const items = await model.getItemsOfCategories([/\bIFCSPACE\b/]);
 
       const spaceIds = Object.values(items).flat();
 
-      if (spaceIds.length === 0) continue;
-
-      modelIdMap[model.modelId] = new Set(spaceIds);
-    }
-
-    for (const [modelId, ids] of Object.entries(modelIdMap)) {
-      const model = this.fragments.list.get(modelId);
-
-      if (!model) continue;
-
-      for (const localId of ids) {
+      for (const localId of spaceIds) {
         const [props] = await model.getItemsData([localId]);
 
         const roomName = props?.Name?.value;
-
         if (!roomName) continue;
 
-        let room = this.roomLookup.get(roomName);
+        const key = this.normalizeRoomNumber(roomName);
 
-        if (!room) {
-          room = {
-            name: roomName,
-            localId: Number(localId),
-            modelId: modelId,
-          };
+        let rooms = this.roomLookup.get(key);
 
-          this.roomLookup.set(roomName, room);
+        if (!rooms) {
+          rooms = [];
+          this.roomLookup.set(key, rooms);
         }
 
-        room.modelId = modelId;
-        room.localId = Number(localId);
-        room.longName = props?.LongName?.value;
+        rooms.push({
+          name: roomName,
+          modelId: model.modelId,
+          localId: Number(localId),
+          longName: props?.LongName?.value,
+        });
       }
     }
 
-    console.log("lookupIfcSpaces", this.roomLookup);
+    console.log(this.roomLookup);
   }
 
   public async showOnlySpaces() {
@@ -1069,7 +1091,14 @@ export class BuildingScene {
           // Executive KPI statistics
           //--------------------------------------------------
 
-          const room = this.roomLookup.get(roomNumber);
+          const key = this.normalizeRoomNumber(roomNumber);
+
+          const rooms = this.roomLookup.get(key) ?? [];
+
+          const matchingRoom =
+            rooms.find((r) => r.name === roomNumber) ??
+            rooms.find((r) => r.name.startsWith(roomNumber)) ??
+            rooms[0];
           const numeric = Number(value);
 
           if (Number.isNaN(numeric)) continue;
@@ -1084,8 +1113,8 @@ export class BuildingScene {
               if (numeric < 18) {
                 alertList.push({
                   room: roomNumber,
-                  modelId: room?.modelId,
-                  localId: room?.localId,
+                  modelId: matchingRoom?.modelId,
+                  localId: matchingRoom?.localId,
                   metric: "Temperature",
                   value: numeric,
                   unit: ts.unit?.name,
@@ -1097,8 +1126,8 @@ export class BuildingScene {
               if (numeric > 26) {
                 alertList.push({
                   room: roomNumber,
-                  modelId: room?.modelId,
-                  localId: room?.localId,
+                  modelId: matchingRoom?.modelId,
+                  localId: matchingRoom?.localId,
                   metric: "Temperature",
                   value: numeric,
                   unit: ts.unit?.name,
@@ -1111,15 +1140,11 @@ export class BuildingScene {
             case "relative humidity":
               humidities.push(numeric);
 
-              // if (numeric < 30 || numeric > 70) {
-              //   alerts++;
-              // }
-
               if (numeric < 30) {
                 alertList.push({
                   room: roomNumber,
-                  modelId: room?.modelId,
-                  localId: room?.localId,
+                  modelId: matchingRoom?.modelId,
+                  localId: matchingRoom?.localId,
                   metric: "Humidity",
                   value: numeric,
                   unit: "%",
@@ -1131,8 +1156,8 @@ export class BuildingScene {
               if (numeric > 70) {
                 alertList.push({
                   room: roomNumber,
-                  modelId: room?.modelId,
-                  localId: room?.localId,
+                  modelId: matchingRoom?.modelId,
+                  localId: matchingRoom?.localId,
                   metric: "Humidity",
                   value: numeric,
                   unit: "%",
@@ -1145,14 +1170,11 @@ export class BuildingScene {
             case "co2":
               co2Values.push(numeric);
 
-              // if (numeric > 1000) {
-              //   alerts++;
-              // }
               if (numeric > 1000) {
                 alertList.push({
                   room: roomNumber,
-                  modelId: room?.modelId,
-                  localId: room?.localId,
+                  modelId: matchingRoom?.modelId,
+                  localId: matchingRoom?.localId,
                   metric: "CO₂",
                   value: numeric,
                   unit: "ppm",
@@ -1173,8 +1195,9 @@ export class BuildingScene {
         }
       }
 
-      this.roomSensors.set(roomNumber, sensors);
-      //this.roomLookup.set(roomNumber, sensors); //need to change this to match with RoomInfo interface
+      const key = this.normalizeRoomNumber(roomNumber);
+
+      this.roomSensors.set(key, sensors);
     }
 
     const average = (values: number[]) =>
@@ -1190,11 +1213,6 @@ export class BuildingScene {
       occupiedRooms + unoccupiedRooms > 0
         ? (occupiedRooms / monitoredRooms) * 100
         : 0;
-
-    // const coveragePercentage =
-    //   this.roomLookup.size > 0
-    //     ? (monitoredRooms / this.roomLookup.size) * 100
-    //     : 0;
 
     const coveragePercentage =
       this.roomSensors.size > 0
@@ -1224,11 +1242,10 @@ export class BuildingScene {
     comfortIndex = Math.max(0, comfortIndex);
 
     this.dashboard = {
-      //rooms: this.roomLookup.size,
       rooms: this.roomSensors.size,
 
       monitoredRooms,
-      //totalRooms: this.roomLookup.size,
+
       totalRooms: this.roomSensors.size,
 
       occupiedRooms,
@@ -1275,7 +1292,6 @@ export class BuildingScene {
       }),
     };
 
-    // console.log("Room lookup:", this.roomLookup);
     console.log("Room sensors:", this.roomSensors);
     console.log("Dashboard:", this.dashboard);
 
@@ -1314,22 +1330,18 @@ export class BuildingScene {
   }
 
   public async selectRoom(modelId: string, localId: number) {
-
     this.showOnlySpaces2();
 
-    const modelIdMap: OBC.ModelIdMap = {
-      [modelId]: new Set([localId]),
-    };
+    //----------------------------------------------------------
+    // Read IFC properties
+    //----------------------------------------------------------
 
-    await this.highlighter.highlightByID("select", modelIdMap, true);
-
-    //need to repeat this? (from private async select...)
-    // ---- properties logic ----
     const model = this.fragments.list.get(modelId);
+
+    console.log("Select rooms - modelId", modelId);
     if (!model) return;
 
     const [props] = await model.getItemsData([localId]);
-    //console.log(props._category.value)
 
     if (!props) {
       this.events.trigger({
@@ -1339,6 +1351,39 @@ export class BuildingScene {
       return;
     }
 
+    const roomName = props?.Name?.value;
+    if (!roomName) return;
+
+    const key = this.normalizeRoomNumber(roomName);
+
+    //----------------------------------------------------------
+    // Highlight all matching IFC spaces
+    //----------------------------------------------------------
+
+    const rooms = this.roomLookup.get(key) ?? [];
+
+    console.log("select rooms: ", rooms);
+
+    const modelIdMap: OBC.ModelIdMap = {};
+
+    if (rooms.length > 0) {
+      for (const room of rooms) {
+        if (!modelIdMap[room.modelId]) {
+          modelIdMap[room.modelId] = new Set<number>();
+        }
+
+        modelIdMap[room.modelId].add(room.localId);
+      }
+    } else {
+      modelIdMap[modelId] = new Set([localId]);
+    }
+
+    await this.highlighter.highlightByID("select", modelIdMap, true);
+
+    //----------------------------------------------------------
+    // IFC properties
+    //----------------------------------------------------------
+
     const formatted = Object.entries(props).map(([name, value]: any) => {
       let finalValue = value;
 
@@ -1346,26 +1391,29 @@ export class BuildingScene {
       if (finalValue?.value) finalValue = finalValue.value;
       if (typeof finalValue === "number") finalValue = finalValue.toString();
 
-      return { name, value: finalValue };
+      return {
+        name,
+        value: finalValue,
+      };
     });
 
-    const roomNumber = props.Name?.value ?? props.Name;
+    //----------------------------------------------------------
+    // Sensor data
+    //----------------------------------------------------------
 
-    if (roomNumber !== this.selectedRoom) {
+    if (key !== this.selectedRoom) {
       this.events.trigger({
         type: "CLEAR_SENSOR_HISTORY",
       });
 
-      this.selectedRoom = roomNumber;
+      this.selectedRoom = key;
     }
 
-    const sensors = this.roomSensors.get(roomNumber) ?? [];
-    //const sensors = this.roomLookup.get(roomNumber) ?? [];
+    const sensors = this.roomSensors.get(key) ?? [];
 
     if (sensors.length > 0) {
       formatted.push(
         { name: "----- SENSOR DATA -----", value: "" },
-        //...sensors,
         ...sensors.map((sensor) => ({
           ...sensor,
           type: "sensor",
@@ -1373,9 +1421,27 @@ export class BuildingScene {
       );
     }
 
+    //----------------------------------------------------------
+    // Update UI
+    //----------------------------------------------------------
+
     this.events.trigger({
       type: "UPDATE_PROPERTIES",
       payload: formatted,
     });
+
+    console.log({
+      roomName,
+      key,
+      matchedSpaces: rooms.map((r) => r.name),
+      sensorsCount: sensors.length,
+    });
+  }
+
+  //normalize room numbers for UO dataset
+  private normalizeRoomNumber(room: string): string {
+    if (!room) return "";
+
+    return room.trim().toUpperCase().replace(/-\d+$/, ""); // remove "-1", "-2", "-10", etc.
   }
 }
