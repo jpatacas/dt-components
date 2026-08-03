@@ -937,59 +937,54 @@ export class BuildingScene {
       return;
     }
 
-    const baseMap = await this.getSpacesByData(data);
-
-    const dataMap = new Map(data.map((d) => [d.spaceName.trim(), d.category]));
+    // spaceName -> category
+    const dataMap = new Map(
+      data.map((d) => [this.normalizeRoomNumber(d.spaceName), d.category]),
+    );
 
     const groups = new Map<string, OBC.ModelIdMap>();
-
     const categories = new Set<string>();
 
-    for (const modelId in baseMap) {
-      const model = this.fragments.list.get(modelId);
+    //----------------------------------------------------------
+    // Use roomLookup directly
+    //----------------------------------------------------------
 
-      if (!model) continue;
+    for (const [key, rooms] of this.roomLookup.entries()) {
+      const category = dataMap.get(key);
 
-      for (const id of baseMap[modelId]) {
-        const [props] = await model.getItemsData([id]);
+      if (!category) continue;
 
-        const name = props?.Name?.value?.trim();
+      categories.add(category);
 
-        if (!name) continue;
+      if (!groups.has(category)) {
+        groups.set(category, {});
+      }
 
-        const category = dataMap.get(name);
+      const target = groups.get(category)!;
 
-        if (!category) continue;
-
-        categories.add(category);
-
-        if (!groups.has(category)) {
-          groups.set(category, {});
+      for (const room of rooms) {
+        if (!target[room.modelId]) {
+          target[room.modelId] = new Set();
         }
 
-        const target = groups.get(category)!;
-
-        if (!target[modelId]) {
-          target[modelId] = new Set();
-        }
-
-        target[modelId].add(id);
+        target[room.modelId].add(room.localId);
       }
     }
 
-    // Remember which highlight styles
-    // belong to this layer
+    //----------------------------------------------------------
+    // Store categories for later clearing
+    //----------------------------------------------------------
+
     this.layerCategories.set(layerId, categories);
 
-    // Isolate only the spaces that belong
-    // to this dataset
-    //await this.hider.isolate(baseMap);
+    //----------------------------------------------------------
+    // Highlight
+    //----------------------------------------------------------
 
-    // Apply highlighting by category
     for (const [category, map] of groups) {
       console.log(`Applying '${category}'`, map);
 
-      this.highlighter.highlightByID(category, map);
+      await this.highlighter.highlightByID(category, map);
     }
   }
 
@@ -1294,6 +1289,7 @@ export class BuildingScene {
 
     console.log("Room sensors:", this.roomSensors);
     console.log("Dashboard:", this.dashboard);
+    console.log("Alerts: ", alertList);
 
     this.events.trigger({
       type: "UPDATE_BUILDING_DASHBOARD",
@@ -1435,6 +1431,7 @@ export class BuildingScene {
       key,
       matchedSpaces: rooms.map((r) => r.name),
       sensorsCount: sensors.length,
+      sensors: sensors,
     });
   }
 
