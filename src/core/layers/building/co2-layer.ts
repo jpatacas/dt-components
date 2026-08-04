@@ -10,7 +10,7 @@ export const co2Layer = {
         const co2 = Number(value);
 
         if (co2 < 800) return "good";
-        if (co2 < 1200) return "moderate";
+        if (co2 < 1000) return "moderate";
 
         return "poor";
       }

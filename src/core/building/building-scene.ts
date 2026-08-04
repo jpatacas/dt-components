@@ -1105,7 +1105,7 @@ export class BuildingScene {
               // if (numeric < 18 || numeric > 26) {
               //   alerts++;
               // }
-              if (numeric < 18) {
+              if (numeric < 19) {
                 alertList.push({
                   room: roomNumber,
                   modelId: matchingRoom?.modelId,
@@ -1118,7 +1118,7 @@ export class BuildingScene {
                 });
               }
 
-              if (numeric > 26) {
+              if (numeric > 24) {
                 alertList.push({
                   room: roomNumber,
                   modelId: matchingRoom?.modelId,
@@ -1148,7 +1148,7 @@ export class BuildingScene {
                 });
               }
 
-              if (numeric > 70) {
+              if (numeric > 60) {
                 alertList.push({
                   room: roomNumber,
                   modelId: matchingRoom?.modelId,

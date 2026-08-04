@@ -9,7 +9,7 @@ export const temperatureLayer = {
       (value) => {
         const temp = Number(value);
 
-        if (temp < 20) return "cold";
+        if (temp < 19) return "cold";
         if (temp > 24) return "hot";
 
         return "comfortable";
