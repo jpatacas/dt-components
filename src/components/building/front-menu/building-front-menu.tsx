@@ -7,6 +7,7 @@ import type { FrontMenuMode } from "../types";
 import { ModelListMenu } from "./front-menu-content/model-list-menu";
 import { FloorplanMenu } from "./front-menu-content/floorplan-menu";
 import { PropertiesMenu } from "./front-menu-content/properties-menu";
+import { ScenariosMenu } from "./front-menu-content/scenarios-menu";
 
 //export type FrontMenuMode = "BuildingInfo"; // if mode == properties, display properties etc...
 
@@ -24,12 +25,14 @@ export const BuildingFrontMenu: FC<{
   content.set("ModelList", <ModelListMenu />);
   content.set("Properties", <PropertiesMenu/>);
   content.set("Floorplans", <FloorplanMenu/>);
+  content.set("Scenarios", <ScenariosMenu/>);
 
   const titles = {
     BuildingInfo: "Building Information",
     ModelList: "Model List",
     Properties: "Properties",
-    Floorplans: "Floor plans"
+    Floorplans: "Floor plans",
+    Scenarios: "Scenarios"
   };
 
   const title = titles[mode];

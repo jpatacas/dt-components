@@ -21,20 +21,18 @@ import { useAppContext } from "../../../middleware/context-provider";
 export const BuildingDashboard: FC<{
   open: boolean;
   toggleDrawer: () => void;
-  // kpis: { //get these from UO API using middleware etc
-  //   buildings: number;
-  //   models: number;
-  // };
 }> = ({ open, toggleDrawer }) => {
   const [state, dispatch] = useAppContext();
 
   const dashboard = state.buildingDashboard;
-  console.log("Dashboard:", dashboard);
+  // console.log("Dashboard:", dashboard);
 
   const Drawer = getBottomDrawer(500);
 
   const format = (value?: number) =>
     value !== undefined && value !== null ? value.toFixed(2) : "--";
+
+  const displayedTemperature = getDisplayedBuildingTemperature(state);
 
   return (
     <Drawer anchor="bottom" variant="persistent" open={open}>
@@ -91,7 +89,8 @@ export const BuildingDashboard: FC<{
                 <Typography variant="subtitle2">Average Temperature</Typography>
 
                 <Typography variant="h5">
-                  {format(dashboard?.avgTemperature)} °C
+                  {/* {format(dashboard?.avgTemperature)} °C */}
+                  {format(displayedTemperature)}°C
                 </Typography>
 
                 <Typography variant="caption">
@@ -254,7 +253,6 @@ export const BuildingDashboard: FC<{
               <Table stickyHeader size="small">
                 <TableHead>
                   <TableRow>
-
                     <TableCell>Room</TableCell>
                     <TableCell>Metric</TableCell>
                     <TableCell align="right">Value</TableCell>
@@ -266,16 +264,18 @@ export const BuildingDashboard: FC<{
                 <TableBody>
                   {dashboard?.alertList?.length ? (
                     dashboard.alertList.map((alert, index) => (
-                      <TableRow key={index} onClick=
-                    {() =>
-                      dispatch({
-                        type: "SELECT_ROOM",
-                        payload: {
-                          modelId: alert.modelId!,
-                          localId: alert.localId!,
-                        },
-                      })
-                    }>
+                      <TableRow
+                        key={index}
+                        onClick={() =>
+                          dispatch({
+                            type: "SELECT_ROOM",
+                            payload: {
+                              modelId: alert.modelId!,
+                              localId: alert.localId!,
+                            },
+                          })
+                        }
+                      >
                         <TableCell>{alert.room}</TableCell>
 
                         <TableCell>{alert.metric}</TableCell>
@@ -315,3 +315,10 @@ export const BuildingDashboard: FC<{
     </Drawer>
   );
 };
+
+export function getDisplayedBuildingTemperature(state: any) {
+  return (
+    (state.buildingDashboard?.avgTemperature ?? 0) +
+    (state.buildingScenario?.temperatureOffset ?? 0)
+  );
+}

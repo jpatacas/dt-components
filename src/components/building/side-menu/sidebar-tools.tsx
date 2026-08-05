@@ -10,6 +10,7 @@ import ModelIcon from "@mui/icons-material/HolidayVillage";
 //import AnalyticsIcon from "@mui/icons-material/Insights";
 import LayersIcon from "@mui/icons-material/Layers";
 import PropertiesIcon from "@mui/icons-material/Info";
+import InsightsIcon from '@mui/icons-material/Insights';
 
 export function getSidebarTools(
   state: State,
@@ -63,6 +64,14 @@ export function getSidebarTools(
       icon: <PropertiesIcon />,
       action: ({ onToggleMenu }) => {
         onToggleMenu(true, "Properties");
+      },
+    },
+    {
+      name: "Scenarios",
+      active: false,
+      icon: <InsightsIcon />,
+      action: ({ onToggleMenu }) => {
+        onToggleMenu(true, "Scenarios");
       },
     },
     {
