@@ -57,6 +57,7 @@ export const reducer = (state: State, action: Action) => {
     return {
       ...state,
       buildingDashboard: action.payload,
+      originalBuildingDashboard: action.payload,
     };
   }
   if (action.type === "UPDATE_DISTRICT_DASHBOARD") {
@@ -65,6 +66,17 @@ export const reducer = (state: State, action: Action) => {
       districtDashboard: action.payload,
     };
   }
-
+  if (action.type === "APPLY_SCENARIO") {
+  return {
+    ...state,
+    buildingScenario: action.payload,
+  };
+}
+  if (action.type === "RESET_SCENARIO") {
+  return {
+    ...state,
+    buildingScenario: null,
+  };
+}
   return { ...state };
 };
