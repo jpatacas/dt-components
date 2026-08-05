@@ -253,3 +253,15 @@ export interface UrbanSensor {
     }
   >;
 }
+
+export interface BuildingScenario {
+  hvacOn: boolean;
+
+  temperatureOffset: number;
+
+  lightingOn?: boolean;
+
+  occupancyMultiplier?: number;
+
+  windowOpen?: boolean;
+}

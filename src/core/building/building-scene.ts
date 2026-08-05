@@ -379,10 +379,10 @@ export class BuildingScene {
     this.lookupIFCSpaces();
 
     //room lookup for UO - USB only! - need to improve this
-    if (this.building.name === "USB") {
-      await this.buildBuildingDashboard();
-      //console.log("room lookup: ", this.roomLookup);
-    }
+    // if (this.building.name === "USB") {
+    await this.buildBuildingDashboard();
+
+    // }
   }
 
   // --------------------------------------------------

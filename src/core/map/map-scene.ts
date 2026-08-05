@@ -1,4 +1,4 @@
-import mapboxgl, * as MAPBOX from "mapbox-gl";
+import * as MAPBOX from "mapbox-gl";
 import { MAPBOX_KEY } from "../../config";
 import type {
   Building,
