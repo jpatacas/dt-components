@@ -776,39 +776,100 @@ export class BuildingScene {
   }
 
   public async lookupIFCSpaces() {
-    this.roomLookup.clear();
+  this.roomLookup.clear();
 
-    for (const [, model] of this.fragments.list) {
-      const items = await model.getItemsOfCategories([/\bIFCSPACE\b/]);
+  for (const [, model] of this.fragments.list) {
+    const items = await model.getItemsOfCategories([/\bIFCSPACE\b/]);
+    const spaceIds = Object.values(items).flat();
 
-      const spaceIds = Object.values(items).flat();
+    for (const localId of spaceIds) {
+      //--------------------------------------------------
+      // IFC Space properties
+      //--------------------------------------------------
 
-      for (const localId of spaceIds) {
-        const [props] = await model.getItemsData([localId]);
+      const [props] = await model.getItemsData([localId]);
 
-        const roomName = props?.Name?.value;
-        if (!roomName) continue;
+      const roomName = props?.Name?.value;
+      if (!roomName) continue;
 
-        const key = this.normalizeRoomNumber(roomName);
+      //--------------------------------------------------
+      // IFC Quantities
+      //--------------------------------------------------
 
-        let rooms = this.roomLookup.get(key);
+      let area: number | undefined;
+      let volume: number |undefined;
+      let height: number | undefined;
 
-        if (!rooms) {
-          rooms = [];
-          this.roomLookup.set(key, rooms);
+      const relations = await model.getRelations([localId]);
+
+      const relationIds =
+        relations.get(localId)?.data?.IsDefinedBy ?? [];
+
+      if (relationIds.length) {
+        const relationData = await model.getItemsData(relationIds);
+
+        const quantitySet = relationData.find(
+          (r) => r.Name?.value === "Qto_SpaceBaseQuantities",
+        );
+
+        if (quantitySet) {
+          const quantityRelations = await model.getRelations([
+            quantitySet._localId.value,
+          ]);
+
+          const quantityIds =
+            quantityRelations.get(quantitySet._localId.value)?.data
+              ?.Quantities ?? [];
+
+          const quantities = await model.getItemsData(quantityIds);
+
+          for (const quantity of quantities) {
+            const name = quantity.Name?.value;
+
+            switch (name) {
+              case "NetFloorArea":
+                area = quantity.AreaValue?.value;
+                break;
+
+              case "GrossVolume":
+                volume = quantity.VolumeValue?.value;
+                break;
+
+              case "Height":
+                height = quantity.LengthValue?.value;
+                break;
+            }
+          }
         }
-
-        rooms.push({
-          name: roomName,
-          modelId: model.modelId,
-          localId: Number(localId),
-          longName: props?.LongName?.value,
-        });
       }
-    }
 
-    console.log(this.roomLookup);
+      //--------------------------------------------------
+      // Store room
+      //--------------------------------------------------
+
+      const key = this.normalizeRoomNumber(roomName);
+
+      let rooms = this.roomLookup.get(key);
+
+      if (!rooms) {
+        rooms = [];
+        this.roomLookup.set(key, rooms);
+      }
+
+      rooms.push({
+        name: roomName,
+        modelId: model.modelId,
+        localId: Number(localId),
+        longName: props?.LongName?.value,
+        area,
+        volume,
+        height,
+      });
+    }
   }
+
+  console.log("Loaded IFC rooms:", this.roomLookup);
+}
 
   public async showOnlySpaces() {
     const modelIdMap: OBC.ModelIdMap = {};

@@ -160,6 +160,8 @@ export interface RoomInfo {
   longName?: string;
   floor?: string;
   area?: number;
+  volume?: number;
+  height?: number;
 
   occupancy?: number;
   occupied?: boolean;
