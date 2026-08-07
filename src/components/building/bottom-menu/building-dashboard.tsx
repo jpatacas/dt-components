@@ -32,7 +32,11 @@ export const BuildingDashboard: FC<{
   const format = (value?: number) =>
     value !== undefined && value !== null ? value.toFixed(2) : "--";
 
-  const displayedTemperature = getDisplayedBuildingTemperature(state);
+ const scenario = state.buildingScenario;
+
+const avgTemperature =
+  scenario?.summary.avgTemperature ??
+  state.buildingDashboard?.avgTemperature;
 
   return (
     <Drawer anchor="bottom" variant="persistent" open={open}>
@@ -90,7 +94,7 @@ export const BuildingDashboard: FC<{
 
                 <Typography variant="h5">
                   {/* {format(dashboard?.avgTemperature)} °C */}
-                  {format(displayedTemperature)}°C
+                  {format(avgTemperature)}°C
                 </Typography>
 
                 <Typography variant="caption">
@@ -315,10 +319,3 @@ export const BuildingDashboard: FC<{
     </Drawer>
   );
 };
-
-export function getDisplayedBuildingTemperature(state: any) {
-  return (
-    (state.buildingDashboard?.avgTemperature ?? 0) +
-    (state.buildingScenario?.temperatureOffset ?? 0)
-  );
-}
