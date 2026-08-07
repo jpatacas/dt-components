@@ -67,5 +67,12 @@ export const executeCore = async (action: Action, events: Events) => {
   }
   if (action.type === "SELECT_ROOM") {
     return buildingHandler.selectRoom(action.payload);
-}
+  }
+  if (action.type === "APPLY_SCENARIO") {
+    return buildingHandler.simulateScenario(action.payload);
+  }
+
+  if (action.type === "RESET_SCENARIO") {
+    return buildingHandler.resetScenario();
+  }
 };

@@ -1,18 +1,24 @@
 import { type User } from "firebase/auth";
-import type { Building, BuildingDashboard, BuildingScenario, DistrictDashboard, Floorplan, Property } from "../types";
+import type {
+  Building,
+  BuildingDashboard,
+  BuildingScenario,
+  DistrictDashboard,
+  Floorplan,
+  Property,
+} from "../types";
 
 export interface State {
   sensorHistory: any;
   user: User | null;
   building: Building | null;
-  dtMode: string; //or string?
+  dtMode: string;
   sensors: Sensor[];
   map?: any;
   floorplans: Floorplan[];
   properties: Property[];
   buildingDashboard: BuildingDashboard | null;
   buildingScenario: BuildingScenario | null;
-  // originalBuildingDashboard: BuildingDashboard | null;
   districtDashboard: DistrictDashboard | null;
 
   selectedSensor?: {
@@ -20,7 +26,6 @@ export interface State {
     timeseriesId: string;
     unit?: string;
   };
-
 }
 
 export interface Sensor {
@@ -40,6 +45,5 @@ export const initialState: State = {
   sensorHistory: [],
   buildingDashboard: null,
   buildingScenario: null,
-  // originalBuildingDashboard: null,
-  districtDashboard: null
+  districtDashboard: null,
 };

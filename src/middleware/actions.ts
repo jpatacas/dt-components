@@ -25,7 +25,8 @@ export const ActionList = ["LOGIN",
 "FLY_TO_LOCATION",
 "SELECT_ROOM",
 "APPLY_SCENARIO",
-"RESET_SCENARIO"] as const;
+"RESET_SCENARIO",
+"UPDATE_SCENARIO"] as const;
 
 export type ActionType = typeof ActionList[number]
 

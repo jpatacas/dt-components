@@ -67,16 +67,22 @@ export const reducer = (state: State, action: Action) => {
     };
   }
   if (action.type === "APPLY_SCENARIO") {
-  return {
-    ...state,
-    buildingScenario: action.payload,
-  };
-}
+    return {
+      ...state,
+      buildingScenario: action.payload,
+    };
+  }
+  if (action.type === "UPDATE_SCENARIO") {
+    return {
+      ...state,
+      buildingScenario: action.payload,
+    };
+  }
   if (action.type === "RESET_SCENARIO") {
-  return {
-    ...state,
-    buildingScenario: null,
-  };
-}
+    return {
+      ...state,
+      buildingScenario: null,
+    };
+  }
   return { ...state };
 };
