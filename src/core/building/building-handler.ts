@@ -66,4 +66,22 @@ export const buildingHandler = {
   selectRoom(payload: { modelId: string; localId: number }) {
     this.viewer?.selectRoom(payload.modelId, payload.localId);
   },
+
+  simulateScenario({
+    heatingOffset,
+    coolingOffset,
+  }: {
+    heatingOffset: number;
+    coolingOffset: number;
+  }) {
+    if (!this.viewer) return;
+
+    this.viewer.simulateSetpointScenario(heatingOffset, coolingOffset);
+  },
+
+  resetScenario() {
+    if (!this.viewer) return;
+
+    this.viewer.resetScenario();
+  },
 };

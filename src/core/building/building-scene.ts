@@ -7,6 +7,8 @@ import type {
   BuildingDashboard,
   BuildingAlert,
   SensorInfo,
+  RoomSimulation,
+  BuildingScenario,
 } from "../../types";
 import workerUrl from "@thatopen/fragments/dist/Worker/worker.mjs?worker&url";
 import { localModelStore } from "../db/local-model-store";
@@ -52,6 +54,8 @@ export class BuildingScene {
   private classifier!: OBC.Classifier;
 
   private previousOccupiedRooms = 0;
+
+  private currentScenario?: BuildingScenario;
 
   constructor(
     private container: HTMLDivElement,
@@ -776,100 +780,99 @@ export class BuildingScene {
   }
 
   public async lookupIFCSpaces() {
-  this.roomLookup.clear();
+    this.roomLookup.clear();
 
-  for (const [, model] of this.fragments.list) {
-    const items = await model.getItemsOfCategories([/\bIFCSPACE\b/]);
-    const spaceIds = Object.values(items).flat();
+    for (const [, model] of this.fragments.list) {
+      const items = await model.getItemsOfCategories([/\bIFCSPACE\b/]);
+      const spaceIds = Object.values(items).flat();
 
-    for (const localId of spaceIds) {
-      //--------------------------------------------------
-      // IFC Space properties
-      //--------------------------------------------------
+      for (const localId of spaceIds) {
+        //--------------------------------------------------
+        // IFC Space properties
+        //--------------------------------------------------
 
-      const [props] = await model.getItemsData([localId]);
+        const [props] = await model.getItemsData([localId]);
 
-      const roomName = props?.Name?.value;
-      if (!roomName) continue;
+        const roomName = props?.Name?.value;
+        if (!roomName) continue;
 
-      //--------------------------------------------------
-      // IFC Quantities
-      //--------------------------------------------------
+        //--------------------------------------------------
+        // IFC Quantities
+        //--------------------------------------------------
 
-      let area: number | undefined;
-      let volume: number |undefined;
-      let height: number | undefined;
+        let area: number | undefined;
+        let volume: number | undefined;
+        let height: number | undefined;
 
-      const relations = await model.getRelations([localId]);
+        const relations = await model.getRelations([localId]);
 
-      const relationIds =
-        relations.get(localId)?.data?.IsDefinedBy ?? [];
+        const relationIds = relations.get(localId)?.data?.IsDefinedBy ?? [];
 
-      if (relationIds.length) {
-        const relationData = await model.getItemsData(relationIds);
+        if (relationIds.length) {
+          const relationData = await model.getItemsData(relationIds);
 
-        const quantitySet = relationData.find(
-          (r) => r.Name?.value === "Qto_SpaceBaseQuantities",
-        );
+          const quantitySet = relationData.find(
+            (r) => r.Name?.value === "Qto_SpaceBaseQuantities",
+          );
 
-        if (quantitySet) {
-          const quantityRelations = await model.getRelations([
-            quantitySet._localId.value,
-          ]);
+          if (quantitySet) {
+            const quantityRelations = await model.getRelations([
+              quantitySet._localId.value,
+            ]);
 
-          const quantityIds =
-            quantityRelations.get(quantitySet._localId.value)?.data
-              ?.Quantities ?? [];
+            const quantityIds =
+              quantityRelations.get(quantitySet._localId.value)?.data
+                ?.Quantities ?? [];
 
-          const quantities = await model.getItemsData(quantityIds);
+            const quantities = await model.getItemsData(quantityIds);
 
-          for (const quantity of quantities) {
-            const name = quantity.Name?.value;
+            for (const quantity of quantities) {
+              const name = quantity.Name?.value;
 
-            switch (name) {
-              case "NetFloorArea":
-                area = quantity.AreaValue?.value;
-                break;
+              switch (name) {
+                case "NetFloorArea":
+                  area = quantity.AreaValue?.value;
+                  break;
 
-              case "GrossVolume":
-                volume = quantity.VolumeValue?.value;
-                break;
+                case "GrossVolume":
+                  volume = quantity.VolumeValue?.value;
+                  break;
 
-              case "Height":
-                height = quantity.LengthValue?.value;
-                break;
+                case "Height":
+                  height = quantity.LengthValue?.value;
+                  break;
+              }
             }
           }
         }
+
+        //--------------------------------------------------
+        // Store room
+        //--------------------------------------------------
+
+        const key = this.normalizeRoomNumber(roomName);
+
+        let rooms = this.roomLookup.get(key);
+
+        if (!rooms) {
+          rooms = [];
+          this.roomLookup.set(key, rooms);
+        }
+
+        rooms.push({
+          name: roomName,
+          modelId: model.modelId,
+          localId: Number(localId),
+          longName: props?.LongName?.value,
+          area,
+          volume,
+          height,
+        });
       }
-
-      //--------------------------------------------------
-      // Store room
-      //--------------------------------------------------
-
-      const key = this.normalizeRoomNumber(roomName);
-
-      let rooms = this.roomLookup.get(key);
-
-      if (!rooms) {
-        rooms = [];
-        this.roomLookup.set(key, rooms);
-      }
-
-      rooms.push({
-        name: roomName,
-        modelId: model.modelId,
-        localId: Number(localId),
-        longName: props?.LongName?.value,
-        area,
-        volume,
-        height,
-      });
     }
-  }
 
-  console.log("Loaded IFC rooms:", this.roomLookup);
-}
+    console.log("Loaded IFC rooms:", this.roomLookup);
+  }
 
   public async showOnlySpaces() {
     const modelIdMap: OBC.ModelIdMap = {};
@@ -1389,6 +1392,7 @@ export class BuildingScene {
   public async selectRoom(modelId: string, localId: number) {
     this.showOnlySpaces2();
 
+    //this.simulateSetpointScenario(2,2)
     //----------------------------------------------------------
     // Read IFC properties
     //----------------------------------------------------------
@@ -1501,5 +1505,163 @@ export class BuildingScene {
     if (!room) return "";
 
     return room.trim().toUpperCase().replace(/-\d+$/, ""); // remove "-1", "-2", "-10", etc.
+  }
+
+  public simulateSetpointScenario(
+    heatingOffset: number,
+    coolingOffset: number,
+  ): RoomSimulation[] {
+    const simulations: RoomSimulation[] = [];
+
+    const DEFAULT_HEATING = 21;
+    const DEFAULT_COOLING = 24;
+
+    for (const [roomKey, sensors] of this.roomSensors) {
+      //------------------------------------------------------
+      // Current measured values
+      //------------------------------------------------------
+
+      const temperature = sensors.find((s) =>
+        s.name.toLowerCase().includes("temperature"),
+      );
+
+      if (!temperature) continue;
+
+      const currentTemperature = Number(temperature.value);
+
+      if (Number.isNaN(currentTemperature)) continue;
+
+      //------------------------------------------------------
+      // Current setpoints
+      //------------------------------------------------------
+
+      const heatingSensor = sensors.find((s) =>
+        s.name.toLowerCase().includes("heating set point"),
+      );
+
+      const coolingSensor = sensors.find((s) =>
+        s.name.toLowerCase().includes("cooling set point"),
+      );
+
+      const heatingSetpoint = heatingSensor
+        ? Number(heatingSensor.value)
+        : DEFAULT_HEATING;
+
+      const coolingSetpoint = coolingSensor
+        ? Number(coolingSensor.value)
+        : DEFAULT_COOLING;
+
+      //------------------------------------------------------
+      // New setpoints
+      //------------------------------------------------------
+
+      const newHeatingSetpoint = heatingSetpoint + heatingOffset;
+      const newCoolingSetpoint = coolingSetpoint + coolingOffset;
+
+      //------------------------------------------------------
+      // IFC quantities
+      //------------------------------------------------------
+
+      const rooms = this.roomLookup.get(roomKey);
+
+      let area: number | undefined;
+      let volume: number | undefined;
+
+      if (rooms?.length) {
+        // use first matching IFC space
+        area = rooms[0].area;
+        volume = rooms[0].volume;
+      }
+
+      //------------------------------------------------------
+      // Thermal response
+      //------------------------------------------------------
+
+      const responseFactor = volume ? 1 / (1 + volume / 250) : 0.6;
+
+      let predictedTemperature = currentTemperature;
+
+      if (currentTemperature < newHeatingSetpoint) {
+        predictedTemperature =
+          currentTemperature +
+          (newHeatingSetpoint - currentTemperature) * responseFactor;
+      } else if (currentTemperature > newCoolingSetpoint) {
+        predictedTemperature =
+          currentTemperature -
+          (currentTemperature - newCoolingSetpoint) * responseFactor;
+      }
+
+      //------------------------------------------------------
+      // Store result
+      //------------------------------------------------------
+
+      simulations.push({
+        roomKey,
+
+        currentTemperature,
+
+        heatingSetpoint,
+        coolingSetpoint,
+
+        newHeatingSetpoint,
+        newCoolingSetpoint,
+
+        area,
+        volume,
+
+        predictedTemperature,
+
+        temperatureChange: predictedTemperature - currentTemperature,
+      });
+    }
+
+    console.log(simulations);
+
+    const predictedTemps = simulations.map((r) => r.predictedTemperature);
+
+    const average =
+      predictedTemps.reduce((a, b) => a + b, 0) / predictedTemps.length;
+
+    const avgDelta =
+      simulations.reduce((sum, r) => sum + r.temperatureChange, 0) /
+      simulations.length;
+
+    const comfortRooms = simulations.filter(
+      (r) => r.predictedTemperature >= 20 && r.predictedTemperature <= 24,
+    ).length;
+
+    const comfortIndex =
+      simulations.length > 0 ? (comfortRooms / simulations.length) * 100 : 0;
+
+    const scenario: BuildingScenario = {
+      rooms: simulations,
+
+      summary: {
+        avgTemperature: average,
+
+        minTemperature: Math.min(...predictedTemps),
+
+        maxTemperature: Math.max(...predictedTemps),
+
+        averageTemperatureChange: avgDelta,
+
+        affectedRooms: simulations.filter(
+          (r) => Math.abs(r.temperatureChange) > 0.1,
+        ).length,
+
+        comfortIndex,
+      },
+    };
+
+    this.currentScenario = scenario;
+
+    this.events.trigger({
+      type: "UPDATE_SCENARIO",
+      payload: scenario,
+    });
+  }
+
+  public resetScenario() {
+    this.currentScenario = undefined;
   }
 }
