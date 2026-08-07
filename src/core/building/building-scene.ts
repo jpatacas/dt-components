@@ -57,6 +57,8 @@ export class BuildingScene {
 
   private currentScenario?: BuildingScenario;
 
+  private roomSimulation = new Map<string, RoomSimulation>();
+
   constructor(
     private container: HTMLDivElement,
     private building: Building,
@@ -599,6 +601,37 @@ export class BuildingScene {
       return;
     }
 
+    const category = props?._category?.value;
+
+    if (category !== "IFCSPACE") {
+      // Highlight only the clicked element
+      this.highlighter.highlight("select", {
+        [modelId]: new Set([localId]),
+      });
+
+      const formatted = Object.entries(props).map(([name, value]: any) => {
+        let finalValue = value;
+
+        if (!finalValue) finalValue = "Unknown";
+        if (finalValue?.value) finalValue = finalValue.value;
+        if (typeof finalValue === "number") {
+          finalValue = finalValue.toString();
+        }
+
+        return {
+          name,
+          value: finalValue,
+        };
+      });
+
+      this.events.trigger({
+        type: "UPDATE_PROPERTIES",
+        payload: formatted,
+      });
+
+      return;
+    }
+
     //----------------------------------------------------------
     // Highlight every IFC space belonging to the same room
     //----------------------------------------------------------
@@ -629,52 +662,7 @@ export class BuildingScene {
       });
     }
 
-    //----------------------------------------------------------
-    // IFC properties
-    //----------------------------------------------------------
-
-    const formatted = Object.entries(props).map(([name, value]: any) => {
-      let finalValue = value;
-
-      if (!finalValue) finalValue = "Unknown";
-      if (finalValue?.value) finalValue = finalValue.value;
-      if (typeof finalValue === "number") finalValue = finalValue.toString();
-
-      return { name, value: finalValue };
-    });
-
-    //----------------------------------------------------------
-    // Sensor data
-    //----------------------------------------------------------
-
-    if (key !== this.selectedRoom) {
-      this.events.trigger({
-        type: "CLEAR_SENSOR_HISTORY",
-      });
-
-      this.selectedRoom = key;
-    }
-
-    const sensors = this.roomSensors.get(key) ?? [];
-
-    if (sensors.length > 0) {
-      formatted.push(
-        { name: "----- SENSOR DATA -----", value: "" },
-        ...sensors.map((sensor) => ({
-          ...sensor,
-          type: "sensor",
-        })),
-      );
-    }
-
-    //----------------------------------------------------------
-    // Update UI
-    //----------------------------------------------------------
-
-    this.events.trigger({
-      type: "UPDATE_PROPERTIES",
-      payload: formatted,
-    });
+    await this.updateRoomProperties(modelId, localId);
   };
 
   public async updateLayers(layerIds: string[]) {
@@ -1441,62 +1429,12 @@ export class BuildingScene {
 
     await this.highlighter.highlightByID("select", modelIdMap, true);
 
-    //----------------------------------------------------------
-    // IFC properties
-    //----------------------------------------------------------
-
-    const formatted = Object.entries(props).map(([name, value]: any) => {
-      let finalValue = value;
-
-      if (!finalValue) finalValue = "Unknown";
-      if (finalValue?.value) finalValue = finalValue.value;
-      if (typeof finalValue === "number") finalValue = finalValue.toString();
-
-      return {
-        name,
-        value: finalValue,
-      };
-    });
-
-    //----------------------------------------------------------
-    // Sensor data
-    //----------------------------------------------------------
-
-    if (key !== this.selectedRoom) {
-      this.events.trigger({
-        type: "CLEAR_SENSOR_HISTORY",
-      });
-
-      this.selectedRoom = key;
-    }
-
-    const sensors = this.roomSensors.get(key) ?? [];
-
-    if (sensors.length > 0) {
-      formatted.push(
-        { name: "----- SENSOR DATA -----", value: "" },
-        ...sensors.map((sensor) => ({
-          ...sensor,
-          type: "sensor",
-        })),
-      );
-    }
-
-    //----------------------------------------------------------
-    // Update UI
-    //----------------------------------------------------------
-
-    this.events.trigger({
-      type: "UPDATE_PROPERTIES",
-      payload: formatted,
-    });
+    await this.updateRoomProperties(modelId, localId);
 
     console.log({
       roomName,
       key,
       matchedSpaces: rooms.map((r) => r.name),
-      sensorsCount: sensors.length,
-      sensors: sensors,
     });
   }
 
@@ -1575,7 +1513,6 @@ export class BuildingScene {
         volume = rooms[0].volume;
         localId = rooms[0].localId;
         modelId = rooms[0].modelId;
-        
       }
 
       //------------------------------------------------------
@@ -1662,6 +1599,12 @@ export class BuildingScene {
 
     this.currentScenario = scenario;
 
+    this.roomSimulation.clear();
+
+    for (const room of scenario.rooms) {
+      this.roomSimulation.set(room.roomKey, room);
+    }
+
     this.events.trigger({
       type: "UPDATE_SCENARIO",
       payload: scenario,
@@ -1670,5 +1613,94 @@ export class BuildingScene {
 
   public resetScenario() {
     this.currentScenario = undefined;
+    this.roomSimulation.clear();
+  }
+
+  private async updateRoomProperties(modelId: string, localId: number) {
+    const model = this.fragments.list.get(modelId);
+
+    if (!model) return;
+
+    const [props] = await model.getItemsData([localId]);
+
+    if (!props) {
+      this.events.trigger({
+        type: "UPDATE_PROPERTIES",
+        payload: [],
+      });
+      return;
+    }
+
+    const roomName = props?.Name?.value;
+    if (!roomName) return;
+
+    const key = this.normalizeRoomNumber(roomName);
+
+    //----------------------------------------------------------
+    // IFC properties
+    //----------------------------------------------------------
+
+    const formatted = Object.entries(props).map(([name, value]: any) => {
+      let finalValue = value;
+
+      if (!finalValue) finalValue = "Unknown";
+      if (finalValue?.value) finalValue = finalValue.value;
+      if (typeof finalValue === "number") finalValue = finalValue.toString();
+
+      return { name, value: finalValue };
+    });
+
+    //----------------------------------------------------------
+    // Sensor data
+    //----------------------------------------------------------
+
+    if (key !== this.selectedRoom) {
+      this.events.trigger({
+        type: "CLEAR_SENSOR_HISTORY",
+      });
+
+      this.selectedRoom = key;
+    }
+
+    const sensors = this.roomSensors.get(key) ?? [];
+
+    if (sensors.length > 0) {
+      formatted.push(
+        { name: "----- SENSOR DATA -----", value: "" },
+        ...sensors.map((sensor) => ({
+          ...sensor,
+          type: "sensor",
+        })),
+      );
+    }
+
+    //----------------------------------------------------------
+    // Scenario
+    //----------------------------------------------------------
+
+    const simulation = this.roomSimulation.get(key);
+
+    if (simulation) {
+      formatted.push(
+        { name: "----- SCENARIO -----", value: "" },
+        {
+          name: "Current Temperature",
+          value: `${simulation.currentTemperature.toFixed(1)} °C`,
+        },
+        {
+          name: "Simulated Temperature",
+          value: `${simulation.predictedTemperature.toFixed(1)} °C`,
+        },
+        {
+          name: "Temperature Change",
+          value: `${simulation.temperatureChange >= 0 ? "+" : ""}${simulation.temperatureChange.toFixed(1)} °C`,
+        },
+      );
+    }
+
+    this.events.trigger({
+      type: "UPDATE_PROPERTIES",
+      payload: formatted,
+    });
   }
 }
