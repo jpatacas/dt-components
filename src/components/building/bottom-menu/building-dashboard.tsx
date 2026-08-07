@@ -32,11 +32,10 @@ export const BuildingDashboard: FC<{
   const format = (value?: number) =>
     value !== undefined && value !== null ? value.toFixed(2) : "--";
 
- const scenario = state.buildingScenario;
+  const scenario = state.buildingScenario;
 
-const avgTemperature =
-  scenario?.summary.avgTemperature ??
-  state.buildingDashboard?.avgTemperature;
+  // const avgTemperature =
+  //   scenario?.summary.avgTemperature ?? state.buildingDashboard?.avgTemperature;
 
   return (
     <Drawer anchor="bottom" variant="persistent" open={open}>
@@ -89,17 +88,97 @@ const avgTemperature =
             </Grid>
 
             <Grid item xs={2}>
-              <Paper sx={{ p: 2 }}>
-                <Typography variant="subtitle2">Average Temperature</Typography>
-
-                <Typography variant="h5">
-                  {/* {format(dashboard?.avgTemperature)} °C */}
-                  {format(avgTemperature)}°C
+              <Paper sx={{ p: 2, height: "100%" }}>
+                <Typography variant="subtitle2" gutterBottom>
+                  Average Temperature
                 </Typography>
 
-                <Typography variant="caption">
-                  Min {format(dashboard?.minTemperature)}° / Max{" "}
-                  {format(dashboard?.maxTemperature)}°
+                <Grid container>
+                  <Box
+                    sx={{
+                      borderRadius: 1,
+                      p: 0.5,
+                    }}
+                  >
+                    <Grid item xs={6}>
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        display="block"
+                      >
+                        Current
+                      </Typography>
+
+                      <Typography variant="h5">
+                        {format(state.buildingDashboard?.avgTemperature)}°
+                      </Typography>
+                    </Grid>
+                  </Box>
+                  <Box
+                    sx={{
+                      bgcolor: state.buildingScenario
+                        ? "primary.50"
+                        : "transparent",
+                      borderRadius: 1,
+                      p: 0.5,
+                    }}
+                  >
+                    <Grid item xs={6}>
+                      <Typography
+                        variant="caption"
+                        color="primary"
+                        display="block"
+                      >
+                        Simulated
+                      </Typography>
+
+                      <Typography
+                        variant="h5"
+                        color={
+                          state.buildingScenario ? "primary" : "text.secondary"
+                        }
+                      >
+                        {state.buildingScenario
+                          ? `${format(state.buildingScenario.summary.avgTemperature)}°`
+                          : "--"}
+                      </Typography>
+                    </Grid>
+                  </Box>
+                </Grid>
+
+                {state.buildingScenario && (
+                  <Typography
+                    variant="body2"
+                    sx={{ mt: 1 }}
+                    color={
+                      state.buildingScenario.summary.averageTemperatureChange >
+                      0
+                        ? "error.main"
+                        : state.buildingScenario.summary
+                              .averageTemperatureChange < 0
+                          ? "info.main"
+                          : "text.secondary"
+                    }
+                  >
+                    Δ{" "}
+                    {state.buildingScenario.summary.averageTemperatureChange > 0
+                      ? "+"
+                      : ""}
+                    {format(
+                      state.buildingScenario.summary.averageTemperatureChange,
+                    )}
+                    °C
+                  </Typography>
+                )}
+
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  display="block"
+                  sx={{ mt: 1 }}
+                >
+                  Min {format(state.buildingDashboard?.minTemperature)}° / Max{" "}
+                  {format(state.buildingDashboard?.maxTemperature)}°
                 </Typography>
               </Paper>
             </Grid>
@@ -269,6 +348,8 @@ const avgTemperature =
                   {dashboard?.alertList?.length ? (
                     dashboard.alertList.map((alert, index) => (
                       <TableRow
+                        hover
+                        sx={{ cursor: "pointer" }}
                         key={index}
                         onClick={() =>
                           dispatch({
@@ -313,6 +394,74 @@ const avgTemperature =
                 </TableBody>
               </Table>
             </TableContainer>
+          </Paper>
+
+          <Paper sx={{ mt: 3 }}>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Room</TableCell>
+                  <TableCell align="right">Current</TableCell>
+                  <TableCell align="right">Heat SP</TableCell>
+                  <TableCell align="right">Cool SP</TableCell>
+                  <TableCell align="right">Simulated</TableCell>
+                  <TableCell align="right">Δ</TableCell>
+                </TableRow>
+              </TableHead>
+
+              <TableBody>
+                {scenario?.rooms.map((room) => (
+                  <TableRow
+                    key={room.roomKey}
+                    hover
+                    sx={{ cursor: "pointer" }}
+                    onClick={() =>
+                      dispatch({
+                        type: "SELECT_ROOM",
+                        payload: {
+                          modelId: room.modelId!,
+                          localId: room.localId!,
+                        },
+                      })
+                    }
+                  >
+                    <TableCell>{room.roomKey}</TableCell>
+
+                    <TableCell align="right">
+                      {format(room.currentTemperature)}°
+                    </TableCell>
+
+                    <TableCell align="right">
+                      {room.heatingSetpoint ?? "—"}
+                    </TableCell>
+
+                    <TableCell align="right">
+                      {room.coolingSetpoint ?? "—"}
+                    </TableCell>
+
+                    <TableCell align="right">
+                      {format(room.predictedTemperature)}°
+                    </TableCell>
+
+                    <TableCell
+                      align="right"
+                      sx={{
+                        color:
+                          room.temperatureChange > 0
+                            ? "error.main"
+                            : room.temperatureChange < 0
+                              ? "info.main"
+                              : "text.secondary",
+                        fontWeight: 600,
+                      }}
+                    >
+                      {room.temperatureChange > 0 ? "+" : ""}
+                      {format(room.temperatureChange)}°
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </Paper>
         </Box>
       </Box>
