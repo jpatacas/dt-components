@@ -259,6 +259,9 @@ export interface UrbanSensor {
 export interface RoomSimulation {
   roomKey: string;
 
+  modelId: string;
+  localId: number;
+
   currentTemperature: number;
 
   heatingSetpoint?: number;

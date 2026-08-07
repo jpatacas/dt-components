@@ -1510,7 +1510,7 @@ export class BuildingScene {
   public simulateSetpointScenario(
     heatingOffset: number,
     coolingOffset: number,
-  ): RoomSimulation[] {
+  ) {
     const simulations: RoomSimulation[] = [];
 
     const DEFAULT_HEATING = 21;
@@ -1566,11 +1566,16 @@ export class BuildingScene {
 
       let area: number | undefined;
       let volume: number | undefined;
+      let localId: number;
+      let modelId: string;
 
       if (rooms?.length) {
         // use first matching IFC space
         area = rooms[0].area;
         volume = rooms[0].volume;
+        localId = rooms[0].localId;
+        modelId = rooms[0].modelId;
+        
       }
 
       //------------------------------------------------------
@@ -1597,6 +1602,8 @@ export class BuildingScene {
 
       simulations.push({
         roomKey,
+        localId,
+        modelId,
 
         currentTemperature,
 
