@@ -256,14 +256,37 @@ export interface UrbanSensor {
   >;
 }
 
+export interface RoomSimulation {
+  roomKey: string;
+
+  currentTemperature: number;
+
+  heatingSetpoint?: number;
+  coolingSetpoint?: number;
+
+  newHeatingSetpoint?: number;
+  newCoolingSetpoint?: number;
+
+  area?: number;
+  volume?: number;
+
+  predictedTemperature: number;
+
+  temperatureChange: number;
+}
+
 export interface BuildingScenario {
-  hvacOn: boolean;
+  rooms: RoomSimulation[];
 
-  temperatureOffset: number;
+  summary: {
+    avgTemperature: number;
+    minTemperature: number;
+    maxTemperature: number;
 
-  lightingOn?: boolean;
+    averageTemperatureChange: number;
 
-  occupancyMultiplier?: number;
+    affectedRooms: number;
 
-  windowOpen?: boolean;
+    comfortIndex: number;
+  };
 }
